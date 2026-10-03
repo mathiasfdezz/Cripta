@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import requests
 
 from adaptadores.cliente_red import ClienteRed
+from adaptadores.conexion_api import ConexionApi
 from adaptadores.error_presupuesto import ErrorPresupuesto
 from adaptadores.error_red import ErrorRed
 
@@ -25,11 +26,11 @@ def respuesta(codigo, cuerpo=None):
 
 
 def cliente_sin_espera():
-    return ClienteRed(esperar=lambda segundos: None)
+    return ClienteRed(ConexionApi(esperar=lambda segundos: None))
 
 
 # requests.get se reemplaza por uno falso, estas pruebas no usan la red
-@patch("adaptadores.cliente_red.requests.get")
+@patch("adaptadores.conexion_api.requests.get")
 class PruebasClienteRed(unittest.TestCase):
 
     def test_200_devuelve_dto(self, get):
@@ -49,8 +50,8 @@ class PruebasClienteRed(unittest.TestCase):
         get.side_effect = [respuesta(429, {"error": "x", "reintentar_en": 3}),
                            respuesta(200, {"version": "abc"})]
         avisos = []
-        cliente = ClienteRed(esperar=lambda s: None,
-                             al_esperar=lambda op, seg, intento: avisos.append(seg))
+        cliente = ClienteRed(ConexionApi(esperar=lambda s: None,
+                                         al_esperar=lambda op, seg, intento: avisos.append(seg)))
         self.assertEqual(cliente.version_catalogo(), "abc")
         self.assertEqual(cliente.solicitudes_realizadas(), 2)
         self.assertEqual(avisos, [3])

@@ -3,6 +3,7 @@
 import sys
 
 from adaptadores.cliente_red import ClienteRed
+from adaptadores.conexion_api import ConexionApi
 from adaptadores.error_red import ErrorRed
 from adaptadores.fuente_datos import MAX_POR_LOTE
 from adaptadores.mapeadores.error_datos import ErrorDatos
@@ -13,7 +14,7 @@ def avisar_espera(operacion, segundos, intento):
 
 
 cripta_id = sys.argv[1] if len(sys.argv) > 1 else "cripta-01"
-cliente = ClienteRed(al_esperar=avisar_espera)
+cliente = ClienteRed(ConexionApi(al_esperar=avisar_espera))
 presupuesto = "?"
 print(f"Client ID: {cliente.client_id}")
 
