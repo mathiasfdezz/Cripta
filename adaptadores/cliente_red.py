@@ -1,97 +1,66 @@
-import time
-import uuid
-
-import requests
-
-BASE_URL = "https://cripta-api.kad06a0zhgs84.us-east-2.cs.amazonlightsail.com/v1"
-MAX_POR_LOTE = 10
-
-
-class ErrorRed(Exception):
-    pass
+from adaptadores.conexion_api import ConexionApi
+from adaptadores.fuente_datos import MAX_POR_LOTE, FuenteDatos
+from adaptadores.mapeadores.error_datos import leer_campo
+from adaptadores.mapeadores.mapeador_catalogo import ficha_catalogo_desde_json
+from adaptadores.mapeadores.mapeador_contenido import contenido_sala_desde_json
+from adaptadores.mapeadores.mapeador_criptas import (datos_cripta_desde_json,
+                                                     resumen_cripta_desde_json)
+from adaptadores.mapeadores.mapeador_salas import pagina_salas_desde_json
 
 
-class ErrorPresupuesto(ErrorRed):
-    pass
+class ClienteRed(FuenteDatos):
+    def __init__(self, conexion=None):
+        self._conexion = conexion if conexion is not None else ConexionApi()
 
-
-class ClienteRed:
-    def __init__(self, timeout=10, max_reintentos=3):
-        # un solo id por ejecución
-        self.client_id = str(uuid.uuid4())
-        self.headers = {"X-Cripta-Client-Id": self.client_id}
-        self.timeout = timeout
-        self.max_reintentos = max_reintentos
-        self.solicitudes = 0
-        self.presupuesto = None
+    @property
+    def client_id(self):
+        return self._conexion.client_id
 
     def fijar_presupuesto(self, presupuesto):
-        self.presupuesto = presupuesto
+        self._conexion.fijar_presupuesto(presupuesto)
 
-    def _get(self, ruta, operacion):
-        url = f"{BASE_URL}{ruta}"
-
-        for intento in range(1, self.max_reintentos + 1):
-            if self.presupuesto is not None and self.solicitudes >= self.presupuesto:
-                raise ErrorPresupuesto(
-                    f"{operacion}: presupuesto agotado "
-                    f"({self.solicitudes}/{self.presupuesto} solicitudes)")
-
-            # los reintentos también cuentan
-            self.solicitudes += 1
-            try:
-                respuesta = requests.get(url, headers=self.headers, timeout=self.timeout)
-            except requests.Timeout:
-                raise ErrorRed(f"{operacion}: el servidor no respondió en {self.timeout}s")
-            except requests.RequestException as error:
-                raise ErrorRed(f"{operacion}: no se pudo conectar ({error})")
-
-            if respuesta.status_code == 200:
-                try:
-                    return respuesta.json()
-                except ValueError:
-                    raise ErrorRed(f"{operacion}: la respuesta no es JSON válido")
-
-            if respuesta.status_code == 429:
-                try:
-                    espera = respuesta.json().get("reintentar_en", 1)
-                except ValueError:
-                    espera = 1
-                print(f"[429] {operacion}: esperando {espera}s "
-                      f"(intento {intento}/{self.max_reintentos})")
-                # tiempo real, no afecta el reloj del juego
-                time.sleep(espera)
-                continue
-
-            raise ErrorRed(f"{operacion}: HTTP {respuesta.status_code} -> {respuesta.text[:200]}")
-
-        raise ErrorRed(f"{operacion}: se agotaron {self.max_reintentos} reintentos por HTTP 429")
+    def solicitudes_realizadas(self):
+        return self._conexion.solicitudes_realizadas()
 
     def listar_criptas(self):
-        return self._get("/criptas", "listar criptas")
+        operacion = "listar criptas"
+        datos = self._conexion.obtener_json("/criptas", operacion)
+        return tuple(resumen_cripta_desde_json(c) for c in leer_campo(datos, "criptas", operacion))
 
     def datos_cripta(self, cripta_id):
-        return self._get(f"/criptas/{cripta_id}", f"datos de {cripta_id}")
+        operacion = f"datos de {cripta_id}"
+        return datos_cripta_desde_json(self._conexion.obtener_json(f"/criptas/{cripta_id}", operacion))
 
     def version_cripta(self, cripta_id):
-        return self._get(f"/criptas/{cripta_id}/version", f"versión de {cripta_id}")
+        operacion = f"versión de {cripta_id}"
+        datos = self._conexion.obtener_json(f"/criptas/{cripta_id}/version", operacion)
+        return leer_campo(datos, "version", operacion)
 
     def pagina_salas(self, cripta_id, pagina):
-        return self._get(f"/criptas/{cripta_id}/salas?pagina={pagina}",
-                         f"esqueleto de {cripta_id}, página {pagina}")
+        operacion = f"esqueleto de {cripta_id}, página {pagina}"
+        return pagina_salas_desde_json(
+            self._conexion.obtener_json(f"/criptas/{cripta_id}/salas?pagina={pagina}", operacion))
 
     def contenido(self, cripta_id, salas):
-        if len(salas) == 0 or len(salas) > MAX_POR_LOTE:
-            raise ValueError(f"contenido acepta de 1 a {MAX_POR_LOTE} salas, se pidieron {len(salas)}")
+        self._validar_lote(salas, "contenido")
         lista = ",".join(str(s) for s in salas)
-        return self._get(f"/criptas/{cripta_id}/contenido?salas={lista}",
-                         f"contenido de salas {lista}")
+        operacion = f"contenido de salas {lista}"
+        datos = self._conexion.obtener_json(f"/criptas/{cripta_id}/contenido?salas={lista}", operacion)
+        return tuple(contenido_sala_desde_json(c) for c in leer_campo(datos, "contenido", operacion))
 
     def version_catalogo(self):
-        return self._get("/catalogo/version", "versión del catálogo")
+        operacion = "versión del catálogo"
+        datos = self._conexion.obtener_json("/catalogo/version", operacion)
+        return leer_campo(datos, "version", operacion)
 
     def catalogo(self, ids):
-        if len(ids) == 0 or len(ids) > MAX_POR_LOTE:
-            raise ValueError(f"catálogo acepta de 1 a {MAX_POR_LOTE} ids, se pidieron {len(ids)}")
+        self._validar_lote(ids, "catálogo")
         lista = ",".join(ids)
-        return self._get(f"/catalogo?ids={lista}", f"catálogo {lista}")
+        operacion = f"catálogo {lista}"
+        datos = self._conexion.obtener_json(f"/catalogo?ids={lista}", operacion)
+        return tuple(ficha_catalogo_desde_json(f) for f in leer_campo(datos, "entidades", operacion))
+
+    def _validar_lote(self, elementos, nombre):
+        if len(elementos) == 0 or len(elementos) > MAX_POR_LOTE:
+            raise ValueError(f"{nombre} acepta de 1 a {MAX_POR_LOTE} elementos, "
+                             f"se pidieron {len(elementos)}")

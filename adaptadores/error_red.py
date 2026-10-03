@@ -1,0 +1,2 @@
+class ErrorRed(Exception):
+    pass
