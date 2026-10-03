@@ -51,6 +51,10 @@ class VectorOrdenado:
         self._valores.pop()
         return valor
 
+    def vaciar(self):
+        self._claves = []
+        self._valores = []
+
     def __len__(self):
         return len(self._claves)
 

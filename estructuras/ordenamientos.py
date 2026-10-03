@@ -65,8 +65,40 @@ def _merge(izquierda, derecha, clave, reverso):
 
     return resultado
 
+UMBRAL_TAMANO = 20
+UMBRAL_DESORDEN = 0.05
+
+ALGORITMO_INSERCION = "insercion"
+ALGORITMO_MERGE = "merge"
+
+
+def proporcion_desorden(datos, clave, reverso=False):
+    n = len(datos)
+    if n < 2:
+        return 0.0
+    descensos = 0
+    previo = clave(datos[0])
+    for k in range(1, n):
+        actual = clave(datos[k])
+        if reverso:
+            if actual > previo:
+                descensos += 1
+        else:
+            if actual < previo:
+                descensos += 1
+        previo = actual
+    return descensos / (n - 1)
+
+
+def elegir_algoritmo(datos, clave, reverso=False):
+    if len(datos) <= UMBRAL_TAMANO:
+        return ALGORITMO_INSERCION
+    if proporcion_desorden(datos, clave, reverso) <= UMBRAL_DESORDEN:
+        return ALGORITMO_INSERCION
+    return ALGORITMO_MERGE
+
 
 def ordenar(datos, clave, reverso=False):
-    if len(datos) <= 10:
+    if elegir_algoritmo(datos, clave, reverso) == ALGORITMO_INSERCION:
         return insertion_sort(datos, clave, reverso)
     return merge_sort(datos, clave, reverso)

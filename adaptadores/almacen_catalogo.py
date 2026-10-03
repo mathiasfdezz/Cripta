@@ -1,0 +1,53 @@
+import json
+import os
+
+from modelo.ficha import Ficha
+
+
+class AlmacenCatalogoDisco:
+
+    def __init__(self, carpeta):
+        self._carpeta = carpeta
+        os.makedirs(carpeta, exist_ok=True)
+
+    def _ruta(self, id_ficha):
+        if "/" in id_ficha or "\\" in id_ficha or ".." in id_ficha:
+            raise ValueError("id de ficha invalido: " + id_ficha)
+        return os.path.join(self._carpeta, id_ficha + ".json")
+
+    def _ruta_version(self):
+        return os.path.join(self._carpeta, "version.txt")
+
+    def version(self):
+        try:
+            with open(self._ruta_version(), "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            return None
+
+    def guardar_version(self, version):
+        self._escribir(self._ruta_version(), version)
+
+    def leer(self, id_ficha):
+        try:
+            with open(self._ruta(id_ficha), "r", encoding="utf-8") as f:
+                return Ficha(json.load(f))
+        except FileNotFoundError:
+            return None
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+    def guardar(self, ficha):
+        self._escribir(self._ruta(ficha.id),
+                       json.dumps(ficha.a_dict(), ensure_ascii=False))
+
+    def limpiar(self):
+        for nombre in os.listdir(self._carpeta):
+            if nombre.endswith(".json"):
+                os.remove(os.path.join(self._carpeta, nombre))
+
+    def _escribir(self, ruta, texto):
+        temporal = ruta + ".tmp"
+        with open(temporal, "w", encoding="utf-8") as f:
+            f.write(texto)
+        os.replace(temporal, ruta)

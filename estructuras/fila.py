@@ -1,5 +1,4 @@
 class Fila:
-
     def __init__(self, capacidad=None, sobrescribir=False):
         if capacidad is not None and capacidad < 1:
             raise ValueError("capacidad debe ser >= 1")
@@ -51,6 +50,7 @@ class Fila:
         return self._tamano
 
     def __iter__(self):
+        """Del mas antiguo al mas reciente."""
         n = len(self._datos)
         for i in range(self._tamano):
             yield self._datos[(self._inicio + i) % n]

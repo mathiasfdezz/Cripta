@@ -70,7 +70,6 @@ class ListaDoble:
 
         return self.insertar_despues(referencia.anterior, dato)
 
-    # ---------- eliminacion y reordenamiento (O(1)) ----------
 
     def eliminar_nodo(self, nodo):
         if nodo is None:
