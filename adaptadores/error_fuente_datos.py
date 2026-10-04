@@ -1,0 +1,2 @@
+class ErrorFuenteDatos(Exception):
+    pass

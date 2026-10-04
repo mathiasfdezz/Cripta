@@ -1,2 +1,5 @@
-class ErrorRed(Exception):
+from adaptadores.error_fuente_datos import ErrorFuenteDatos
+
+
+class ErrorRed(ErrorFuenteDatos):
     pass

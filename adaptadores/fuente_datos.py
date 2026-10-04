@@ -3,6 +3,12 @@ from abc import ABC, abstractmethod
 MAX_POR_LOTE = 10
 
 
+def validar_lote(elementos, nombre):
+    if len(elementos) == 0 or len(elementos) > MAX_POR_LOTE:
+        raise ValueError(f"{nombre} acepta de 1 a {MAX_POR_LOTE} elementos, "
+                         f"se pidieron {len(elementos)}")
+
+
 class FuenteDatos(ABC):
 
     @abstractmethod

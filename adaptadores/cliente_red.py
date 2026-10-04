@@ -1,5 +1,5 @@
 from adaptadores.conexion_api import ConexionApi
-from adaptadores.fuente_datos import MAX_POR_LOTE, FuenteDatos
+from adaptadores.fuente_datos import FuenteDatos, validar_lote
 from adaptadores.mapeadores.error_datos import leer_campo
 from adaptadores.mapeadores.mapeador_catalogo import ficha_catalogo_desde_json
 from adaptadores.mapeadores.mapeador_contenido import contenido_sala_desde_json
@@ -42,7 +42,7 @@ class ClienteRed(FuenteDatos):
             self._conexion.obtener_json(f"/criptas/{cripta_id}/salas?pagina={pagina}", operacion))
 
     def contenido(self, cripta_id, salas):
-        self._validar_lote(salas, "contenido")
+        validar_lote(salas, "contenido")
         lista = ",".join(str(s) for s in salas)
         operacion = f"contenido de salas {lista}"
         datos = self._conexion.obtener_json(f"/criptas/{cripta_id}/contenido?salas={lista}", operacion)
@@ -54,13 +54,8 @@ class ClienteRed(FuenteDatos):
         return leer_campo(datos, "version", operacion)
 
     def catalogo(self, ids):
-        self._validar_lote(ids, "catálogo")
+        validar_lote(ids, "catálogo")
         lista = ",".join(ids)
         operacion = f"catálogo {lista}"
         datos = self._conexion.obtener_json(f"/catalogo?ids={lista}", operacion)
         return tuple(ficha_catalogo_desde_json(f) for f in leer_campo(datos, "entidades", operacion))
-
-    def _validar_lote(self, elementos, nombre):
-        if len(elementos) == 0 or len(elementos) > MAX_POR_LOTE:
-            raise ValueError(f"{nombre} acepta de 1 a {MAX_POR_LOTE} elementos, "
-                             f"se pidieron {len(elementos)}")
