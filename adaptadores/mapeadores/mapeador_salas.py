@@ -17,7 +17,8 @@ def pagina_salas_desde_json(datos):
 
 def sala_desde_json(datos):
     donde = f"sala {datos.get('id', '?')}"
-    salidas_json = leer_campo(datos, "salidas", donde)
+    # el contrato permite una sala sin "salidas"
+    salidas_json = datos.get("salidas") or {}
     for direccion in salidas_json:
         if direccion not in DIRECCIONES:
             raise ErrorDatos(f"{donde}: dirección desconocida '{direccion}'")

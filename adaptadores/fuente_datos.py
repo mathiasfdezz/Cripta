@@ -7,6 +7,10 @@ def validar_lote(elementos, nombre):
     if len(elementos) == 0 or len(elementos) > MAX_POR_LOTE:
         raise ValueError(f"{nombre} acepta de 1 a {MAX_POR_LOTE} elementos, "
                          f"se pidieron {len(elementos)}")
+    # el API responde 400 con repetidos y esa solicitud igual gasta presupuesto
+    for i in range(1, len(elementos)):
+        if elementos[i] in elementos[:i]:
+            raise ValueError(f"{nombre}: '{elementos[i]}' está repetido en el lote")
 
 
 class FuenteDatos(ABC):

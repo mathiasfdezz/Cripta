@@ -36,6 +36,15 @@ class PruebasMapeadorSalas(unittest.TestCase):
         self.assertEqual(len(pagina.salas), 1)
         self.assertEqual(pagina.salas[0].nombre, "Pasillo de las urnas")
 
+    def test_sala_sin_salidas(self):
+        sala = sala_desde_json({"id": 6, "nombre": "Salida"})
+        self.assertEqual(sala.salidas, ())
+
+    def test_cerrada_null_es_abierta(self):
+        sala = sala_desde_json({"id": 1, "nombre": "A", "salidas": {
+            "N": {"sala": 2, "cerrada": None, "llave": None, "cierre_automatico": None}}})
+        self.assertFalse(sala.salidas[0].cerrada)
+
 
 if __name__ == "__main__":
     unittest.main()

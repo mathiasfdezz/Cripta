@@ -161,7 +161,7 @@ def _desempaquetar_sala(registro):
 
 def guardar(ruta, cabecera, jugador, salas):
     """Escribe el archivo completo. 'salas' es una lista de DatosSala."""
-    ordenadas = ordenar(salas, lambda s: s.id)          # indice ordenado por id
+    ordenadas = ordenar(salas, lambda s: s.id)
 
     cadenas = (_cadena(cabecera.cripta_id) + _cadena(cabecera.cripta_version) +
                _cadena(cabecera.catalogo_version))
@@ -188,8 +188,6 @@ def guardar(ruta, cabecera, jugador, salas):
             f.write(reg)
         for entrada in entradas:
             f.write(entrada)
-
-
 
 class ArchivoGuardado:
 
@@ -233,6 +231,11 @@ class ArchivoGuardado:
         self._f.seek(self._off_indice + k * _ENTRADA_INDICE.size)
         return _ENTRADA_INDICE.unpack(self._f.read(_ENTRADA_INDICE.size))
 
+    def _leer_indice(self):
+        self._f.seek(self._off_indice)
+        crudo = self._f.read(self.n_salas * _ENTRADA_INDICE.size)
+        return list(_ENTRADA_INDICE.iter_unpack(crudo))
+
     def leer_sala(self, id_sala):
         bajo, alto = 0, self.n_salas - 1
         while bajo <= alto:
@@ -248,12 +251,15 @@ class ArchivoGuardado:
         return None
 
     def leer_todas(self):
-        salas = []
-        for k in range(self.n_salas):
-            _, offset, largo = self._entrada(k)
-            self._f.seek(offset)
-            salas.append(_desempaquetar_sala(self._f.read(largo)))
-        return salas
+        if self.n_salas == 0:
+            return []
+        indice = self._leer_indice()
+        inicio = min(off for _, off, _ in indice)
+        fin = max(off + largo for _, off, largo in indice)
+        self._f.seek(inicio)
+        bloque = self._f.read(fin - inicio)
+        return [_desempaquetar_sala(bloque[off - inicio:off - inicio + largo])
+                for _, off, largo in indice]
 
     def cerrar(self):
         self._f.close()

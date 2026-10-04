@@ -8,9 +8,10 @@ def contenido_sala_desde_json(datos):
     donde = f"contenido de sala {datos.get('sala', '?')}"
     return ContenidoSala(
         sala=leer_campo(datos, "sala", donde),
-        enemigos=tuple(_enemigo(e, donde) for e in leer_campo(datos, "enemigos", donde)),
-        objetos=tuple(leer_campo(datos, "objetos", donde)),
-        trampas=tuple(_trampa(t, donde) for t in leer_campo(datos, "trampas", donde)),
+        # en el contrato solo "sala" es obligatorio, las listas pueden faltar
+        enemigos=tuple(_enemigo(e, donde) for e in datos.get("enemigos") or ()),
+        objetos=tuple(datos.get("objetos") or ()),
+        trampas=tuple(_trampa(t, donde) for t in datos.get("trampas") or ()),
     )
 
 

@@ -25,6 +25,10 @@ class PruebasMapeadorContenido(unittest.TestCase):
         self.assertEqual(contenido.enemigos[0].vida, 12)
         self.assertEqual(contenido.trampas[0].tipo, "trp_dardos")
 
+    def test_solo_viene_la_sala(self):
+        contenido = contenido_sala_desde_json({"sala": 6})
+        self.assertEqual((contenido.enemigos, contenido.objetos, contenido.trampas), ((), (), ()))
+
 
 if __name__ == "__main__":
     unittest.main()

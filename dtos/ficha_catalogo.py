@@ -13,7 +13,6 @@ class FichaCatalogo:
     velocidad: int | None = None
     comportamiento: str | None = None
     suelta: tuple = ()
-    regeneracion: int | None = None
     # objetos
     peso: int | None = None
     valor: int | None = None
@@ -22,7 +21,7 @@ class FichaCatalogo:
     cura: int | None = None
     modificador_velocidad: int | None = None
     duracion: int | None = None
-    abre: str | None = None
+    abre: str | int | None = None
     # trampas
     dano: int | None = None
     rearme: int | None = None
