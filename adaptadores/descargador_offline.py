@@ -42,11 +42,11 @@ class DescargadorOffline:
             for contenido in leer_campo(respuesta, "contenido", operacion_lote):
                 sala = leer_campo(contenido, "sala", operacion_lote)
                 self._guardar(self._rutas.contenido_sala(cripta_id, sala), contenido)
-                for enemigo in contenido.get("enemigos", []):
+                for enemigo in contenido.get("enemigos") or []:
                     self._agregar_sin_repetir(tipos, enemigo["tipo"])
-                for objeto in contenido.get("objetos", []):
+                for objeto in contenido.get("objetos") or []:
                     self._agregar_sin_repetir(tipos, objeto)
-                for trampa in contenido.get("trampas", []):
+                for trampa in contenido.get("trampas") or []:
                     self._agregar_sin_repetir(tipos, trampa["tipo"])
 
         self.descargar_catalogo(tipos)
@@ -68,7 +68,7 @@ class DescargadorOffline:
                 self._guardar(self._rutas.ficha(ficha_id), ficha)
                 descargados.append(ficha_id)
                 # lo que suelta un enemigo también hay que tenerlo offline
-                for soltado in ficha.get("suelta", []):
+                for soltado in ficha.get("suelta") or []:
                     if soltado not in descargados and soltado not in pendientes:
                         pendientes.append(soltado)
 

@@ -1,7 +1,8 @@
+import dataclasses
 import json
 import os
 
-from modelo.ficha import Ficha
+from dtos.ficha_catalogo import FichaCatalogo
 
 
 class AlmacenCatalogoDisco:
@@ -31,15 +32,18 @@ class AlmacenCatalogoDisco:
     def leer(self, id_ficha):
         try:
             with open(self._ruta(id_ficha), "r", encoding="utf-8") as f:
-                return Ficha(json.load(f))
+                datos = json.load(f)
+            datos["suelta"] = tuple(datos.get("suelta") or ())
+            return FichaCatalogo(**datos)
         except FileNotFoundError:
             return None
-        except (json.JSONDecodeError, ValueError):
+        # archivo dañado o de un formato viejo: se trata como si no estuviera
+        except (json.JSONDecodeError, TypeError, ValueError):
             return None
 
     def guardar(self, ficha):
         self._escribir(self._ruta(ficha.id),
-                       json.dumps(ficha.a_dict(), ensure_ascii=False))
+                       json.dumps(dataclasses.asdict(ficha), ensure_ascii=False))
 
     def limpiar(self):
         for nombre in os.listdir(self._carpeta):

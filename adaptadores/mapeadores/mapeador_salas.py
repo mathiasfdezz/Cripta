@@ -37,7 +37,7 @@ def _salida(direccion, datos, donde):
     return Salida(
         direccion=direccion,
         sala_destino=leer_campo(datos, "sala", donde),
-        cerrada=datos.get("cerrada", False),
+        cerrada=bool(datos.get("cerrada")),
         llave=datos.get("llave"),
         cierre_automatico=datos.get("cierre_automatico"),
     )

@@ -26,8 +26,8 @@ def _recorrer(esqueleto, origen, ya_pedida, limite, solo_abiertas, elegidas, res
         for salida in sala.salidas:
             if solo_abiertas and salida.cerrada:
                 continue
-            if visitadas.insertar(salida.destino, True):
-                cola.encolar(salida.destino)
+            if visitadas.insertar(salida.sala_destino, True):
+                cola.encolar(salida.sala_destino)
 
 
 def salas_a_precargar(esqueleto, origen, ya_pedida, limite=LOTE_CONTENIDO):

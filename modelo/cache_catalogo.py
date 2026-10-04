@@ -13,7 +13,7 @@ class _Entrada:
 
 
 class CacheCatalogo:
-    """Cache de fichas del catalogo con desalojo LRU (§4.3 y §4.4).
+    """Cache de fichas del catalogo con desalojo LRU (4.3 y 4.4).
 
     - Busqueda por id: VectorOrdenado (busqueda binaria, muchas lecturas,
       pocas inserciones).
@@ -24,16 +24,16 @@ class CacheCatalogo:
       reajusta cuando se liberan.
 
     El modelo no conoce HTTP ni archivos. Recibe dos adaptadores:
-      proveedor.traer_catalogo(lista_ids) -> lista de Ficha  (red u offline)
-      almacen: leer(id) -> Ficha|None, guardar(ficha), version(),
+      fuente: FuenteDatos, usa fuente.catalogo(ids) -> FichaCatalogo (red u offline)
+      almacen: leer(id) -> FichaCatalogo|None, guardar(ficha), version(),
                guardar_version(v), limpiar()                 (disco)
     """
 
-    def __init__(self, proveedor, almacen=None, capacidad=25):
+    def __init__(self, fuente, almacen=None, capacidad=25):
         if capacidad < 1:
             raise ValueError("la capacidad de la cache debe ser >= 1")
         self.capacidad = capacidad
-        self._proveedor = proveedor
+        self._fuente = fuente
         self._almacen = almacen
         self._indice = VectorOrdenado()   # id -> nodo de la lista LRU
         self._lru = ListaDoble()          # dato = _Entrada
@@ -105,7 +105,7 @@ class CacheCatalogo:
         for inicio in range(0, len(faltan), LOTE_MAXIMO):
             lote = faltan[inicio:inicio + LOTE_MAXIMO]
             self.lotes_red += 1
-            for ficha in self._proveedor.traer_catalogo(lote):
+            for ficha in self._fuente.catalogo(lote):
                 self._insertar(ficha)
                 halladas.insertar(ficha.id, ficha)
                 if self._almacen is not None:

@@ -13,7 +13,7 @@ def ficha_catalogo_desde_json(datos):
         defensa=datos.get("defensa"),
         velocidad=datos.get("velocidad"),
         comportamiento=datos.get("comportamiento"),
-        suelta=tuple(datos.get("suelta", ())),
+        suelta=tuple(datos.get("suelta") or ()),
         regeneracion=datos.get("regeneracion"),
         peso=datos.get("peso"),
         valor=datos.get("valor"),
