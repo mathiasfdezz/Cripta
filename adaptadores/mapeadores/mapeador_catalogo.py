@@ -1,7 +1,6 @@
 from adaptadores.mapeadores.error_datos import ErrorDatos, leer_campo
 from dtos.ficha_catalogo import FichaCatalogo
 
-# campos obligatorios de cada clase según el contrato del API (Swagger)
 OBLIGATORIOS_POR_CLASE = (
     ("enemigo", ("vida_max", "ataque", "defensa", "velocidad", "comportamiento")),
     ("arma", ("peso", "valor", "ataque_bonus")),
@@ -20,7 +19,7 @@ COMPORTAMIENTOS = ("guardián", "errante", "rastreador")
 def ficha_catalogo_desde_json(datos):
     donde = f"ficha {datos.get('id', '?')}"
     clase = leer_campo(datos, "clase", donde)
-    for campo in _obligatorios(clase, donde):
+    for campo in _obligatorios(clase):
         leer_campo(datos, campo, donde)
     if clase == "enemigo" and datos["comportamiento"] not in COMPORTAMIENTOS:
         raise ErrorDatos(f"{donde}: comportamiento desconocido '{datos['comportamiento']}'")
@@ -48,8 +47,8 @@ def ficha_catalogo_desde_json(datos):
     )
 
 
-def _obligatorios(clase, donde):
+def _obligatorios(clase):
     for nombre, campos in OBLIGATORIOS_POR_CLASE:
         if nombre == clase:
             return campos
-    raise ErrorDatos(f"{donde}: clase desconocida '{clase}'")
+    return ()

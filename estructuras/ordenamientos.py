@@ -65,7 +65,7 @@ def _merge(izquierda, derecha, clave, reverso):
 
     return resultado
 
-UMBRAL_TAMANO = 20
+UMBRAL_TAMANO = 100
 UMBRAL_DESORDEN = 0.05
 
 ALGORITMO_INSERCION = "insercion"

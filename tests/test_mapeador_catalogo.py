@@ -32,9 +32,10 @@ class PruebasMapeadorCatalogo(unittest.TestCase):
                 {"id": "itm_espada", "nombre": "Espada", "clase": "arma", "peso": 3, "valor": 10})
         self.assertIn("ataque_bonus", str(ctx.exception))
 
-    def test_clase_desconocida(self):
-        with self.assertRaises(ErrorDatos):
-            ficha_catalogo_desde_json({"id": "x", "nombre": "X", "clase": "dragon"})
+
+    def test_clase_desconocida_no_rompe_la_carga(self):
+        ficha = ficha_catalogo_desde_json({"id": "x", "nombre": "X", "clase": "dragon"})
+        self.assertEqual(ficha.clase, "dragon")
 
     def test_comportamiento_desconocido(self):
         with self.assertRaises(ErrorDatos):

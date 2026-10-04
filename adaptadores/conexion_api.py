@@ -52,14 +52,15 @@ class ConexionApi:
                 except ValueError:
                     raise ErrorRed(f"{operacion}: la respuesta no es JSON válido")
 
+                        
             if respuesta.status_code == 429:
                 try:
-                    espera = respuesta.json().get("reintentar_en", 1)
+                    cuerpo = respuesta.json()
+                    espera = cuerpo.get("reintentar_en", 1) if isinstance(cuerpo, dict) else 1
                 except ValueError:
                     espera = 1
                 if self._al_esperar is not None:
                     self._al_esperar(operacion, espera, intento)
-                # tiempo real, no afecta el reloj del juego
                 self._esperar(espera)
                 continue
 

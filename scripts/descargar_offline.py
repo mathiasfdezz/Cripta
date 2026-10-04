@@ -14,15 +14,18 @@ def avisar_espera(operacion, segundos, intento):
     print(f"[429] {operacion}: esperando {segundos}s (intento {intento})")
 
 
-conexion = ConexionApi(al_esperar=avisar_espera)
-descargador = DescargadorOffline(conexion, RutasOffline())
+def principal():
+    conexion = ConexionApi(al_esperar=avisar_espera)
+    descargador = DescargadorOffline(conexion, RutasOffline())
+    try:
+        publicadas = descargador.descargar_lista_criptas()
+        for cripta_id in sys.argv[1:] or publicadas:
+            descargador.descargar_cripta(cripta_id)
+            print(f"{cripta_id}: descargada")
+    except (ErrorRed, ErrorDatos) as error:
+        print(f"[ERROR] {error}")
+    print(f"Solicitudes usadas: {conexion.solicitudes_realizadas()}")
 
-try:
-    publicadas = descargador.descargar_lista_criptas()
-    for cripta_id in sys.argv[1:] or publicadas:
-        descargador.descargar_cripta(cripta_id)
-        print(f"{cripta_id}: descargada")
-except (ErrorRed, ErrorDatos) as error:
-    print(f"[ERROR] {error}")
 
-print(f"Solicitudes usadas: {conexion.solicitudes_realizadas()}")
+if __name__ == "__main__":
+    principal()
