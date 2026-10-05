@@ -2,7 +2,7 @@ import json
 import os
 
 from adaptadores.fuente_datos import MAX_POR_LOTE
-from adaptadores.mapeadores.error_datos import leer_campo
+from adaptadores.mapeadores.error_datos import ErrorDatos, leer_campo
 
 
 class DescargadorOffline:
@@ -34,6 +34,7 @@ class DescargadorOffline:
                 ids_sala.append(leer_campo(sala, "id", operacion_pagina))
 
         tipos = []
+        descargadas = set()
         for i in range(0, len(ids_sala), MAX_POR_LOTE):
             lista = ",".join(str(s) for s in ids_sala[i:i + MAX_POR_LOTE])
             operacion_lote = f"contenido de salas {lista}"
@@ -42,12 +43,17 @@ class DescargadorOffline:
             for contenido in leer_campo(respuesta, "contenido", operacion_lote):
                 sala = leer_campo(contenido, "sala", operacion_lote)
                 self._guardar(self._rutas.contenido_sala(cripta_id, sala), contenido)
+                descargadas.add(sala)
                 for enemigo in contenido.get("enemigos") or []:
-                    self._agregar_sin_repetir(tipos, enemigo["tipo"])
+                    self._agregar_sin_repetir(tipos, leer_campo(enemigo, "tipo", operacion_lote))
                 for objeto in contenido.get("objetos") or []:
                     self._agregar_sin_repetir(tipos, objeto)
                 for trampa in contenido.get("trampas") or []:
-                    self._agregar_sin_repetir(tipos, trampa["tipo"])
+                    self._agregar_sin_repetir(tipos, leer_campo(trampa, "tipo", operacion_lote))
+
+        faltan = [s for s in ids_sala if s not in descargadas]
+        if faltan:
+            raise ErrorDatos(f"{operacion}: el API no devolvio el contenido de las salas {faltan}")
 
         self.descargar_catalogo(tipos)
 
@@ -67,7 +73,6 @@ class DescargadorOffline:
                 ficha_id = leer_campo(ficha, "id", operacion)
                 self._guardar(self._rutas.ficha(ficha_id), ficha)
                 descargados.append(ficha_id)
-                # lo que suelta un enemigo también hay que tenerlo offline
                 for soltado in ficha.get("suelta") or []:
                     if soltado not in descargados and soltado not in pendientes:
                         pendientes.append(soltado)

@@ -23,7 +23,7 @@ class AlmacenCatalogoDisco:
         try:
             with open(self._ruta_version(), "r", encoding="utf-8") as f:
                 return f.read().strip()
-        except FileNotFoundError:
+        except (FileNotFoundError, UnicodeDecodeError):
             return None
 
     def guardar_version(self, version):
@@ -31,14 +31,17 @@ class AlmacenCatalogoDisco:
 
     def leer(self, id_ficha):
         try:
-            with open(self._ruta(id_ficha), "r", encoding="utf-8") as f:
+            ruta = self._ruta(id_ficha)
+            with open(ruta, "r", encoding="utf-8") as f:
                 datos = json.load(f)
-            datos["suelta"] = tuple(datos.get("suelta") or ())
-            return FichaCatalogo(**datos)
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError, OSError):
             return None
-        # archivo dañado o de un formato viejo: se trata como si no estuviera
-        except (json.JSONDecodeError, TypeError, ValueError):
+        if not isinstance(datos, dict):
+            return None
+        datos["suelta"] = tuple(datos.get("suelta") or ())
+        try:
+            return FichaCatalogo(**datos)
+        except TypeError:
             return None
 
     def guardar(self, ficha):

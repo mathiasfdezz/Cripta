@@ -6,6 +6,8 @@ from adaptadores.cliente_offline import ClienteOffline
 from adaptadores.cliente_red import ClienteRed
 from adaptadores.conexion_api import ConexionApi
 from adaptadores.error_fuente_datos import ErrorFuenteDatos
+from adaptadores.error_presupuesto import ErrorPresupuesto
+from controlador import partida
 from modelo.cache_catalogo import CacheCatalogo
 
 CARPETA_CACHE = "cache_catalogo"
@@ -15,12 +17,19 @@ def avisar_espera(operacion, segundos, intento):
     print(f"[429] {operacion}: esperando {segundos}s (intento {intento})")
 
 
+def _positivo(texto):
+    valor = int(texto)
+    if valor < 1:
+        raise argparse.ArgumentTypeError("debe ser 1 o mayor")
+    return valor
+
+
 def leer_argumentos(argv=None):
     parser = argparse.ArgumentParser(description="Cripta")
     parser.add_argument("cripta", nargs="?", default="cripta-01", help="id de la cripta")
     parser.add_argument("--offline", action="store_true",
                         help="leer los datos de datos_offline/ en vez del API")
-    parser.add_argument("--cache-size", type=int, default=25,
+    parser.add_argument("--cache-size", type=_positivo, default=25,
                         help="fichas del catalogo que caben en memoria")
     parser.add_argument("--replay", metavar="PARTIDA.LOG",
                         help="reproducir una partida guardada")
@@ -49,10 +58,6 @@ def principal(argv=None):
         correr_bench()
         return 0
 
-    if args.replay:
-        print("--replay todavia no esta disponible.")
-        return 1
-
     fuente = crear_fuente(args.offline)
     try:
         datos = fuente.datos_cripta(args.cripta)
@@ -60,8 +65,10 @@ def principal(argv=None):
         cache = preparar_cache(fuente, args.cache_size)
         print(f"Cripta {datos.id} v{datos.version}: {datos.salas_total} salas, "
               f"presupuesto {datos.presupuesto_solicitudes} solicitudes")
-        # el motor de juego se conecta aqui
-        return 0
+        return partida.iniciar(datos, cache, fuente, args.replay)
+    except ErrorPresupuesto as error:
+        print(f"[PRESUPUESTO] {error}")
+        return 1
     except ErrorFuenteDatos as error:
         print(f"[ERROR] {error}")
         return 1

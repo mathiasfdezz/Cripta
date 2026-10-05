@@ -1,8 +1,10 @@
-from bench import bench_guardado, bench_ordenamientos
+from bench import bench_estructuras, bench_guardado, bench_ordenamientos
 
 
 def principal():
-    print("### Ordenamientos")
+    print("### Estructuras (cache, inventario, agenda)")
+    bench_estructuras.principal()
+    print("\n### Ordenamientos")
     bench_ordenamientos.principal()
     print("\n### Guardado binario vs JSON")
     bench_guardado.principal()

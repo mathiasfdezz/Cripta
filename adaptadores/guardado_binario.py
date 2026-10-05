@@ -5,6 +5,7 @@ from estructuras.ordenamientos import ordenar
 
 MAGIC = b"CRPT"
 VERSION_FORMATO = 1
+VIDA_DEL_CATALOGO = -1
 
 _PREFIJO = struct.Struct("<4sHqqIQQ")
 _ENTRADA_INDICE = struct.Struct("<iQI")
@@ -117,8 +118,9 @@ def _empaquetar_sala(s):
         p.append(_cadena(id_obj))
     p.append(struct.pack("<H", len(s.enemigos)))
     for inst, tipo, vida, tiempo, activo in s.enemigos:
+        vida_guardada = VIDA_DEL_CATALOGO if vida is None else vida
         p.append(_cadena(inst) + _cadena(tipo) +
-                 struct.pack("<iqB", vida, tiempo, 1 if activo else 0))
+                 struct.pack("<iqB", vida_guardada, tiempo, 1 if activo else 0))
     p.append(struct.pack("<H", len(s.trampas)))
     for inst, tipo, armada in s.trampas:
         p.append(_cadena(inst) + _cadena(tipo) + struct.pack("<B", 1 if armada else 0))
@@ -147,7 +149,8 @@ def _desempaquetar_sala(registro):
         tipo, pos = _leer_cadena(d, pos)
         vida, tiempo, activo = struct.unpack_from("<iqB", d, pos)
         pos += struct.calcsize("<iqB")
-        enemigos.append((inst, tipo, vida, tiempo, bool(activo)))
+        enemigos.append((inst, tipo, None if vida == VIDA_DEL_CATALOGO else vida,
+                         tiempo, bool(activo)))
     (n,) = struct.unpack_from("<H", d, pos); pos += 2
     trampas = []
     for _ in range(n):
@@ -188,6 +191,7 @@ def guardar(ruta, cabecera, jugador, salas):
             f.write(reg)
         for entrada in entradas:
             f.write(entrada)
+
 
 class ArchivoGuardado:
 
