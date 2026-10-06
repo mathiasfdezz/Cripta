@@ -24,7 +24,7 @@ def _recorrer(esqueleto, origen, ya_pedida, limite, solo_abiertas, elegidas, res
         if sala is None:
             continue
         for salida in sala.salidas:
-            if solo_abiertas and salida.cerrada:
+            if solo_abiertas and not esqueleto.puede_atravesar(actual, salida.direccion):
                 continue
             if visitadas.insertar(salida.sala_destino, True):
                 cola.encolar(salida.sala_destino)
