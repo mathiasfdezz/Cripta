@@ -11,6 +11,8 @@ Comandos:
   sig / ant            ver el objeto siguiente / anterior del inventario
   inv [peso|valor|nombre]   ver el inventario, ordenado si se indica
   deshacer             usar un pergamino de retroceso
+  guardar [nombre]     guardar la partida (partidas/nombre.sav)
+  cargar [nombre]      cargar una partida guardada
   ayuda                ver esta lista
   salir                terminar la sesión
 """

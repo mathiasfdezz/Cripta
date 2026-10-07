@@ -72,7 +72,8 @@ def jugar(cripta_id, fuente, tamano_cache, semilla):
         semilla = secrets.randbelow(10 ** 9)
 
     vista = Consola()
-    controlador = ControladorPartida(datos, fuente, cache, vista, semilla)
+    controlador = ControladorPartida(datos, fuente, cache, vista, semilla, version_catalogo,
+                                     CARPETA_PARTIDAS)
     ruta = os.path.join(CARPETA_PARTIDAS, f"partida-{datetime.now():%Y%m%d-%H%M%S}.log")
     bitacora = BitacoraPartida(ruta)
     bitacora.crear(CabeceraPartida(datos.id, datos.version, version_catalogo, semilla))
@@ -92,6 +93,10 @@ def jugar(cripta_id, fuente, tamano_cache, semilla):
 
 def reproducir(ruta, fuente, tamano_cache):
     cabecera, comandos = BitacoraPartida.leer(ruta)
+    if not cabecera.reproducible:
+        print("[REPLAY] Esta bitácora empieza desde un guardado cuya bitácora original ya no "
+              "existe: no se puede garantizar una reproducción fiel.")
+        return 1
     datos = fuente.datos_cripta(cabecera.cripta_id)
     fuente.fijar_presupuesto(datos.presupuesto_solicitudes)
     version_catalogo = fuente.version_catalogo()
@@ -104,7 +109,8 @@ def reproducir(ruta, fuente, tamano_cache):
     cache = preparar_cache(fuente, version_catalogo, tamano_cache)
 
     vista = VistaReplay()
-    controlador = ControladorPartida(datos, fuente, cache, vista, cabecera.semilla)
+    controlador = ControladorPartida(datos, fuente, cache, vista, cabecera.semilla,
+                                     version_catalogo, CARPETA_PARTIDAS)
     pendientes = iter(comandos)
     controlador.jugar(lambda: next(pendientes, None))
     vista.mostrar_reporte(fuente.solicitudes_realizadas(), datos.presupuesto_solicitudes,
