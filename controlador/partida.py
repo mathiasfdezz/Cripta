@@ -9,7 +9,8 @@ from adaptadores.guardado_partida import GuardadoPartida
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.bitacora import Bitacora
 from modelo.esqueleto import Esqueleto
-from modelo.estado_partida import DERROTA, VICTORIA, EstadoPartida
+from modelo.estado_partida import (DERROTA, SUCESO_PUERTA_CERRADA, SUCESO_TRAMPA, VICTORIA,
+                                   EstadoPartida)
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
 from modelo.movimiento import MovimientoInvalido
@@ -67,7 +68,8 @@ class ControladorPartida:
                 continue
             if comando.lower() == "salir":
                 break
-            if self._bitacora_partida is not None and                     comando.split()[0].lower() not in SIN_BITACORA:
+            va_a_bitacora = comando.split()[0].lower() not in SIN_BITACORA
+            if self._bitacora_partida is not None and va_a_bitacora:
                 self._bitacora_partida.anotar(comando)
                 self._comandos += 1
             self.ejecutar(comando)
@@ -142,6 +144,10 @@ class ControladorPartida:
             self._precargar(salida.sala_destino)
         destino = self.estado.mover_jugador(direccion)
         self._avisar(f"Entras a {self.esqueleto.obtener(destino).nombre}.")
+        self._contar_sucesos()
+        if self.estado.resultado == DERROTA:
+            self._avisar("Caíste en la cripta. Fin de la partida.")
+            return
         if self.estado.resultado == VICTORIA:
             self._avisar("¡Llegaste a la salida! Ganaste.")
             return
@@ -152,10 +158,18 @@ class ControladorPartida:
             return
         for golpe in self.estado.avanzar_hasta_turno_jugador():
             self._avisar_golpe(golpe)
+        self._contar_sucesos()
         if self.estado.resultado == DERROTA:
             self._avisar("Caíste en la cripta. Fin de la partida.")
             return
         self._precargar_vecinas()
+
+    def _contar_sucesos(self):
+        for suceso in self.estado.tomar_sucesos():
+            if suceso[0] == SUCESO_TRAMPA:
+                self._avisar(f"¡Trampa! {suceso[1]} te hace {suceso[2]} de daño.")
+            elif suceso[0] == SUCESO_PUERTA_CERRADA:
+                self._avisar(f"La puerta {suceso[2]} de la sala {suceso[1]} se cerró sola.")
 
     def _avisar_golpe(self, golpe):
         if golpe.atacante is self.estado.jugador:

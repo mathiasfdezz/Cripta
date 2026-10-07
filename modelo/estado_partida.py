@@ -12,10 +12,19 @@ from modelo.movimiento import (CONTENIDO_PENDIENTE, INVENTARIO_LLENO, Movimiento
                                SALA_NO_DISPONIBLE, SIN_ENEMIGO, SIN_LLAVE, SIN_MAPA, SIN_OBJETO,
                                SIN_PERGAMINO, SIN_SALIDA)
 from modelo.rastro import Rastro
+from modelo.trampa import Trampa
 
 EVENTO_ACCION = "accion"
 EVENTO_FIN_VELOCIDAD = "fin_velocidad"
 EVENTO_APAGAR_ANTORCHA = "apagar_antorcha"
+EVENTO_REARME_TRAMPA = "rearme_trampa"
+EVENTO_CERRAR_PUERTA = "cerrar_puerta"
+
+REARME_POR_DEFECTO = 300    # si la ficha de la trampa no trae rearme
+
+# lo que el controlador puede querer contar después de cada comando
+SUCESO_TRAMPA = "trampa"
+SUCESO_PUERTA_CERRADA = "puerta_cerrada"
 
 # un costo equivale a esa misma cantidad de tiempo a velocidad 100; a más velocidad, menos tiempo
 VELOCIDAD_BASE = 100
@@ -76,7 +85,9 @@ class EstadoPartida:
         self._obtener_ficha = obtener_ficha
         self._enemigos = VectorOrdenado()   # instancia -> Enemigo
         self._suelo = VectorOrdenado()      # sala -> lista de ids de catálogo
-        self._trampas = VectorOrdenado()    # sala -> lista de InstanciaTrampa
+        self._trampas = VectorOrdenado()    # sala -> lista de Trampa
+        self._trampas_por_id = VectorOrdenado()   # instancia -> Trampa
+        self._sucesos = []
         self._cargadas = VectorOrdenado()   # sala -> True cuando su contenido ya está
 
     def configurar_salida(self, sala_salida, llave_salida):
@@ -110,7 +121,8 @@ class EstadoPartida:
                                          contenido.sala)
             for id_objeto in contenido.objetos:
                 self._suelo_agregar(contenido.sala, id_objeto)
-            self._trampas.insertar(contenido.sala, list(contenido.trampas))
+            trampas = [Trampa(t.instancia, t.tipo, contenido.sala) for t in contenido.trampas]
+            self._agregar_trampas(contenido.sala, trampas)
             self._cargadas.insertar(contenido.sala, True)
 
     def contenido_cargado(self, sala):
@@ -127,12 +139,24 @@ class EstadoPartida:
         return [e for _, e in self._enemigos if e.esta_vivo()]
 
     def restaurar_sala(self, sala, objetos, trampas, cargada):
-        """Al cargar una partida guardada: lo que había en la sala en ese momento."""
+        """Al cargar una partida guardada: lo que había en la sala en ese momento.
+        trampas: lista de Trampa con su estado (armada o no)."""
         for id_objeto in objetos:
             self._suelo_agregar(sala, id_objeto)
-        self._trampas.insertar(sala, list(trampas))
+        self._agregar_trampas(sala, trampas)
         if cargada:
             self._cargadas.insertar(sala, True)
+
+    def _agregar_trampas(self, sala, trampas):
+        self._trampas.insertar(sala, list(trampas))
+        for trampa in trampas:
+            self._trampas_por_id.insertar(trampa.instancia, trampa)
+
+    def tomar_sucesos(self):
+        """Lo que pasó desde la última vez (trampas, puertas que se cerraron solas),
+        para que el controlador lo cuente. Se vacía al leerlo."""
+        sucesos, self._sucesos = self._sucesos, []
+        return sucesos
 
     # ------------------------------------------------------------ enemigos
 
@@ -238,6 +262,10 @@ class EstadoPartida:
         self._gastar_turno(COSTO_MOVER)
         self._asignar(self.jugador, "sala", destino)
         self._marcar_rastro()
+        # las trampas armadas saltan apenas se entra, antes del siguiente evento
+        self._activar_trampas(destino)
+        if self.terminada():
+            return destino
         self.activar_enemigos(destino)
         if destino == self.sala_salida and self.puerta_salida_abierta:
             self._asignar(self, "resultado", VICTORIA)
@@ -246,7 +274,8 @@ class EstadoPartida:
 
     def abrir_puerta(self, direccion):
         """Abre la puerta cerrada de esa salida si el jugador tiene su llave (la llave
-        no se gasta). Cuesta COSTO_ABRIR_PUERTA. Se abre para las dos salas."""
+        no se gasta). Cuesta COSTO_ABRIR_PUERTA. Solo se abre este lado: el otro
+        lado de la conexión es otra puerta. Si declara cierre automático, se programa."""
         self._exigir_turno()
         self._salida(direccion)
         puerta = self.esqueleto.puerta(self.jugador.sala, direccion)
@@ -258,6 +287,10 @@ class EstadoPartida:
         self._marcar_rastro()
         self._recordar(puerta, "cerrada")
         puerta.abrir()
+        if puerta.cierre_automatico:
+            # solo se cierra este lado; quien ya pasó se queda donde está
+            self.agenda.programar(self.tiempo + puerta.cierre_automatico,
+                                  Evento(EVENTO_CERRAR_PUERTA, f"{self.jugador.sala}:{direccion}"))
         if self.llave_salida is not None and puerta.llave == self.llave_salida:
             self._asignar(self, "puerta_salida_abierta", True)
         return puerta
@@ -269,6 +302,21 @@ class EstadoPartida:
         if salida is None:
             raise MovimientoInvalido(SIN_SALIDA, f"no hay salida hacia {direccion}")
         return salida
+
+    def _activar_trampas(self, sala):
+        for trampa in self.trampas_en(sala):
+            if not trampa.armada or not self.jugador.esta_vivo():
+                continue
+            ficha = self._obtener_ficha(trampa.tipo)
+            self._asignar(trampa, "armada", False)
+            self._recordar(self.jugador, "vida")
+            self.jugador.recibir_dano(ficha.dano or 0)
+            self._sucesos.append((SUCESO_TRAMPA, ficha.nombre, ficha.dano or 0))
+            rearme = ficha.rearme if ficha.rearme else REARME_POR_DEFECTO
+            self.agenda.programar(self.tiempo + rearme,
+                                  Evento(EVENTO_REARME_TRAMPA, trampa.instancia))
+            if not self.jugador.esta_vivo():
+                self._morir(self.jugador)
 
     def _marcar_rastro(self):
         # cada acción del jugador refresca el rastro de la sala donde queda
@@ -445,6 +493,19 @@ class EstadoPartida:
         if evento.tipo == EVENTO_APAGAR_ANTORCHA:
             if self.antorcha_hasta is not None and self.antorcha_hasta <= self.tiempo:
                 self._asignar(self, "antorcha_hasta", None)
+            return None
+        if evento.tipo == EVENTO_REARME_TRAMPA:
+            trampa = self._trampas_por_id.buscar(evento.objetivo)
+            if trampa is not None:
+                self._asignar(trampa, "armada", True)
+            return None
+        if evento.tipo == EVENTO_CERRAR_PUERTA:
+            sala, _, direccion = evento.objetivo.partition(":")
+            puerta = self.esqueleto.puerta(int(sala), direccion)
+            if puerta is not None and puerta.esta_abierta():
+                self._recordar(puerta, "cerrada")
+                puerta.cerrar()
+                self._sucesos.append((SUCESO_PUERTA_CERRADA, int(sala), direccion))
             return None
         enemigo = self._enemigos.buscar(evento.objetivo)
         # un muerto no ejecuta nada, aunque su evento llegara hasta aquí

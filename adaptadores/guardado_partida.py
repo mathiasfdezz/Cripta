@@ -3,11 +3,11 @@ import os
 from adaptadores.guardado_binario import (NINGUNO, ArchivoGuardado, DatosCabecera, DatosJugador,
                                           DatosSala, GuardadoIncompatible, guardar)
 from dtos.instancia_enemigo import InstanciaEnemigo
-from dtos.instancia_trampa import InstanciaTrampa
 from modelo.estado_partida import EstadoPartida
 from modelo.evento import Evento
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
+from modelo.trampa import Trampa
 
 
 class GuardadoPartida:
@@ -54,7 +54,7 @@ class GuardadoPartida:
             enemigos = [(e.instancia, e.tipo, e.vida, e.proximo_evento.tiempo_siguiente
                          if e.proximo_evento is not None else NINGUNO, e.activo)
                         for e in estado.enemigos_vivos() if e.sala == id_sala]
-            trampas = [(t.instancia, t.tipo, True) for t in estado.trampas_en(id_sala)]
+            trampas = [(t.instancia, t.tipo, t.armada) for t in estado.trampas_en(id_sala)]
             rastro = estado.rastro.tiempo_en(id_sala)
             salas.append(DatosSala(id_sala, NINGUNO if rastro is None else rastro, puertas,
                                    estado.suelo(id_sala), enemigos, trampas,
@@ -94,7 +94,8 @@ class GuardadoPartida:
 
         for sala in salas:
             estado.restaurar_sala(sala.id, sala.objetos,
-                                  [InstanciaTrampa(inst, tipo) for inst, tipo, _ in sala.trampas],
+                                  [Trampa(inst, tipo, sala.id, armada)
+                                   for inst, tipo, armada in sala.trampas],
                                   sala.cargada)
             if sala.rastro != NINGUNO:
                 estado.rastro.marcar(sala.id, sala.rastro)
