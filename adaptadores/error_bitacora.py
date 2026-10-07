@@ -1,0 +1,2 @@
+class ErrorBitacora(Exception):
+    pass

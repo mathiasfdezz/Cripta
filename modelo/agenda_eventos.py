@@ -8,6 +8,8 @@ class AgendaEventos:
         self._siguiente_secuencia = 1
         # cuántos eventos cancelados siguen dentro del heap sin haber sido descartados
         self._cancelados_en_heap = 0
+        # recibe cómo deshacer cada cambio de la agenda (lo conecta el historial del retroceso)
+        self.registrar = None
 
     def programar(self, tiempo, evento):
         secuencia = self._siguiente_secuencia
@@ -17,6 +19,7 @@ class AgendaEventos:
         evento.en_agenda = True
         # la secuencia nunca se repite, así que nunca se llega a comparar el evento
         self._heap.insertar((tiempo, secuencia, evento))
+        self._anotar(lambda: self._anular(evento))
         return secuencia
 
     def cancelar(self, evento):
@@ -25,12 +28,13 @@ class AgendaEventos:
             return False
         evento.cancelado = True
         self._cancelados_en_heap += 1
+        self._anotar(lambda: self._descancelar(evento))
         return True
 
     def reprogramar(self, evento, tiempo):
         # la versión anterior queda cancelada y la nueva entra con secuencia nueva
         self.cancelar(evento)
-        nuevo = Evento(evento.tipo, evento.objetivo)
+        nuevo = Evento(evento.tipo, evento.objetivo, evento.dato)
         secuencia = self.programar(tiempo, nuevo)
         return secuencia, nuevo
 
@@ -51,9 +55,10 @@ class AgendaEventos:
     def _descartar_cancelados(self):
         # saca de la raíz los eventos cancelados hasta encontrar uno válido o vaciar el heap
         while not self._heap.esta_vacio() and self._heap.ver_minimo()[2].cancelado:
-            _, _, evento = self._heap.extraer_minimo()
-            evento.en_agenda = False
+            entrada = self._heap.extraer_minimo()
+            entrada[2].en_agenda = False
             self._cancelados_en_heap -= 1
+            self._anotar(lambda: self._reinsertar(entrada, True))
 
     def ver_siguiente(self):
         self._descartar_cancelados()
@@ -63,6 +68,7 @@ class AgendaEventos:
         self._descartar_cancelados()
         entrada = self._heap.extraer_minimo()
         entrada[2].en_agenda = False
+        self._anotar(lambda: self._reinsertar(entrada, False))
         return entrada
 
     def esta_vacia(self):
@@ -71,3 +77,26 @@ class AgendaEventos:
 
     def tamano(self):
         return self._heap.tamano() - self._cancelados_en_heap
+
+    # -------------------------------------------- para deshacer (retroceso)
+    # la secuencia no se rebobina: los eventos restaurados conservan la suya
+    # y los nuevos siguen recibiendo números mayores, así nunca se repiten
+
+    def _anotar(self, deshacer):
+        if self.registrar is not None:
+            self.registrar(deshacer)
+
+    def _anular(self, evento):
+        # deshace programar: queda en el heap como cancelado y se ignora al llegar
+        evento.cancelado = True
+        self._cancelados_en_heap += 1
+
+    def _descancelar(self, evento):
+        evento.cancelado = False
+        self._cancelados_en_heap -= 1
+
+    def _reinsertar(self, entrada, cancelado):
+        self._heap.insertar(entrada)
+        entrada[2].en_agenda = True
+        if cancelado:
+            self._cancelados_en_heap += 1

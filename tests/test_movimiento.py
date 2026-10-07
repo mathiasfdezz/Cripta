@@ -9,8 +9,8 @@ from modelo.estado_partida import EstadoPartida
 from modelo.evento import Evento
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
-from modelo.movimiento import (MovimientoInvalido, NO_ES_TURNO, PUERTA_ABIERTA, PUERTA_CERRADA,
-                               SALA_NO_DISPONIBLE, SIN_LLAVE, SIN_MAPA, SIN_SALIDA)
+from modelo.movimiento import (MovimientoInvalido, NO_ES_TURNO, PARTIDA_TERMINADA, PUERTA_ABIERTA,
+                               PUERTA_CERRADA, SALA_NO_DISPONIBLE, SIN_LLAVE, SIN_MAPA, SIN_SALIDA)
 from tests.test_actores import leer_json
 from tests.test_esqueleto import esqueleto, esqueleto_cripta_01, sala
 
@@ -124,7 +124,8 @@ class PruebasMovimiento(PruebasBase):
         resultados = estado.avanzar_hasta_turno_jugador()
         self.assertTrue(resultados[-1].murio)
         self.assertIsNone(estado.jugador.proximo_evento)
-        self.assert_rechazada(estado, NO_ES_TURNO, estado.mover_jugador, "S")
+        # con el jugador muerto la partida terminó
+        self.assert_rechazada(estado, PARTIDA_TERMINADA, estado.mover_jugador, "S")
         with self.assertRaises(ValueError):
             estado.avanzar_hasta_turno_jugador()
 

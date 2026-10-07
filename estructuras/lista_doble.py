@@ -71,6 +71,21 @@ class ListaDoble:
         return self.insertar_despues(referencia.anterior, dato)
 
 
+    def enlazar_despues(self, referencia, nodo):
+        """Vuelve a meter un nodo ya existente detrás de referencia (o al frente si
+        referencia es None). Sirve para deshacer: el nodo conserva su identidad."""
+        nodo.anterior = referencia
+        nodo.siguiente = self.cabeza if referencia is None else referencia.siguiente
+        if nodo.siguiente is not None:
+            nodo.siguiente.anterior = nodo
+        else:
+            self.cola = nodo
+        if referencia is None:
+            self.cabeza = nodo
+        else:
+            referencia.siguiente = nodo
+        self.tamano += 1
+
     def eliminar_nodo(self, nodo):
         if nodo is None:
             return None

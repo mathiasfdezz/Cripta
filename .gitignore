@@ -5,3 +5,4 @@ venv/
 .pytest_cache/
 cache_catalogo/
 partidas/
+puntajes.txt

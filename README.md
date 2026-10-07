@@ -17,14 +17,23 @@ Banderas:
 
 - `--offline`: lee los datos de `datos_offline/` en vez del API. No gasta solicitudes.
 - `--cache-size N`: fichas del catalogo en memoria (por defecto 25, minimo 1).
-- `--replay PARTIDA.LOG`: reproduce una partida guardada.
+- `--semilla N`: semilla del azar. Sin ella se elige una y se muestra al empezar.
+- `--replay partidas/ARCHIVO.log`: reproduce una partida sin interaccion. Si la version de la cripta o del catalogo ya no coincide, lo informa y no la reproduce.
 - `--bench`: corre las mediciones de rendimiento y termina.
+
+## Comandos en el juego
+
+Escribe `ayuda` dentro del juego para ver la lista. Los principales:
+`n`/`s`/`e`/`o` (moverse), `abrir <dir>`, `atacar [instancia]`, `esperar`,
+`recoger [id]`, `soltar`, `equipar`, `usar`, `sig`/`ant` (recorrer el inventario),
+`inv [peso|valor|nombre]`, `deshacer` (pergamino de retroceso) y `salir`.
 
 ## Archivos
 
 - `datos_offline/`: respuestas del API guardadas. Para regenerarlas: `python -m scripts.descargar_offline`
 - `cache_catalogo/`: fichas del catalogo guardadas en disco. Se regenera sola.
-- `partidas/`: partidas guardadas.
+- `partidas/`: bitacora de cada partida (`partida-FECHA.log`), sirve para `--replay`.
+- `puntajes.txt`: tabla local de puntajes.
 
 ## Pruebas
 
