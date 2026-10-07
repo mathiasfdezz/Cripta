@@ -44,6 +44,15 @@ def partida(semilla=1, sala_jugador=2, **kw):
     return EstadoPartida(semilla, jugador(sala=sala_jugador, **kw))
 
 
+def ataca(estado, instancia=None):
+    """El jugador ataca en su turno: primero corre lo que pase antes (o le da el primero)."""
+    if estado.jugador.proximo_evento is None:
+        estado.iniciar()
+    else:
+        estado.avanzar_hasta_turno_jugador()
+    return estado.jugador_ataca(instancia)
+
+
 def con_enemigo(estado, instancia="e-201", sala=2, vida=12, **kw):
     """Coloca un enemigo y lo deja activo (programado en la agenda)."""
     enemigo = estado.colocar_enemigo(InstanciaEnemigo(instancia, "ent_rata_gigante", vida),
@@ -83,10 +92,10 @@ class PruebasCalculoDeDano(unittest.TestCase):
 
     def test_cada_golpe_consume_un_randint_de_la_partida(self):
         estado = partida(semilla=42)
-        con_enemigo(estado, vida=1000)
+        con_enemigo(estado, vida=1000, velocidad=1)   # tan lenta que no ataca en medio
         espejo = random.Random(42)
         for _ in range(5):
-            resultado = estado.jugador_ataca("e-201")
+            resultado = ataca(estado, "e-201")
             self.assertEqual(resultado.dano, max(1, 6 + espejo.randint(0, 4) - 1))
         self.assertEqual(estado.azar.randint(0, 4), espejo.randint(0, 4))
 
@@ -97,7 +106,7 @@ class PruebasCombate(unittest.TestCase):
         estado = partida(semilla=3)
         rata = con_enemigo(estado)
         esperado = max(1, 6 + random.Random(3).randint(0, 4) - 1)
-        resultado = estado.jugador_ataca("e-201")
+        resultado = ataca(estado, "e-201")
         self.assertIs(resultado.atacante, estado.jugador)
         self.assertIs(resultado.defensor, rata)
         self.assertEqual(resultado.dano, esperado)
@@ -109,7 +118,10 @@ class PruebasCombate(unittest.TestCase):
         lejana = con_enemigo(estado, sala=2)
         self.assertFalse(puede_atacar(estado.jugador, lejana))
         with self.assertRaises(ValueError):
-            estado.jugador_ataca("e-201")
+            ataca(estado, "e-201")
+        # el intento rechazado no gastó el turno
+        self.assertTrue(estado.es_turno_del_jugador())
+        self.assertEqual(estado.tiempo, 0)
         with self.assertRaises(ValueError):
             atacar(lejana, estado.jugador, estado.azar)
         self.assertEqual(lejana.vida, 12)
@@ -133,7 +145,7 @@ class PruebasCombate(unittest.TestCase):
         estado = partida()
         a = con_enemigo(estado, "e-201")
         b = con_enemigo(estado, "e-202")
-        resultado = estado.jugador_ataca("e-202")
+        resultado = ataca(estado, "e-202")
         self.assertIs(resultado.defensor, b)
         self.assertEqual(a.vida, 12)
         self.assertLess(b.vida, 12)
@@ -143,19 +155,19 @@ class PruebasCombate(unittest.TestCase):
         con_enemigo(estado, "e-201")
         con_enemigo(estado, "e-202")
         with self.assertRaises(ValueError):
-            estado.jugador_ataca()
+            ataca(estado)
 
     def test_con_un_solo_enemigo_no_hace_falta_elegir(self):
         estado = partida()
         rata = con_enemigo(estado)
-        self.assertIs(estado.jugador_ataca().defensor, rata)
+        self.assertIs(ataca(estado).defensor, rata)
 
     def test_atacar_sin_enemigos_o_a_un_inexistente(self):
         estado = partida()
         with self.assertRaises(ValueError):
-            estado.jugador_ataca()
+            ataca(estado)
         with self.assertRaises(ValueError):
-            estado.jugador_ataca("e-999")
+            ataca(estado, "e-999")
 
     def test_enemigo_ataca_al_jugador_cuando_le_toca(self):
         estado = partida(semilla=5)
@@ -190,11 +202,12 @@ class PruebasCombate(unittest.TestCase):
             estado = partida(semilla=semilla, vida=1000)
             con_enemigo(estado, "e-201", vida=1000)
             con_enemigo(estado, "e-202", vida=1000, velocidad=90)
+            estado.iniciar()
             danos = []
             for i in range(6):
                 danos.append(estado.jugador_ataca("e-201" if i % 2 == 0 else "e-202").dano)
-                danos.append(estado.ejecutar_siguiente().dano)
-            return danos, estado.jugador.vida
+                danos.extend(r.dano for r in estado.avanzar_hasta_turno_jugador())
+            return danos, estado.jugador.vida, estado.tiempo
 
         self.assertEqual(correr(11), correr(11))
         self.assertNotEqual(correr(11), correr(12))
@@ -202,8 +215,8 @@ class PruebasCombate(unittest.TestCase):
     def test_el_random_global_no_influye(self):
         def correr():
             estado = partida(semilla=9)
-            con_enemigo(estado, vida=1000)
-            return [estado.jugador_ataca("e-201").dano for _ in range(8)]
+            con_enemigo(estado, vida=1000, velocidad=1)
+            return [ataca(estado, "e-201").dano for _ in range(8)]
 
         random.seed(1)
         primero = correr()
@@ -216,7 +229,7 @@ class PruebasMuerteDeEnemigo(unittest.TestCase):
     def test_el_enemigo_muere_al_quedarse_sin_vida(self):
         estado = partida()
         rata = con_enemigo(estado, vida=1)
-        resultado = estado.jugador_ataca("e-201")
+        resultado = ataca(estado, "e-201")
         self.assertTrue(resultado.murio)
         self.assertEqual(rata.vida, 0)                  # nunca negativa
         self.assertFalse(rata.esta_vivo())
@@ -224,10 +237,10 @@ class PruebasMuerteDeEnemigo(unittest.TestCase):
 
     def test_muere_tras_varios_golpes(self):
         estado = partida()
-        rata = con_enemigo(estado)
+        rata = con_enemigo(estado, velocidad=1)
         golpes = 0
         while rata.esta_vivo():
-            estado.jugador_ataca("e-201")
+            ataca(estado, "e-201")
             golpes += 1
             self.assertLess(golpes, 20)
         self.assertGreater(golpes, 1)
@@ -235,29 +248,31 @@ class PruebasMuerteDeEnemigo(unittest.TestCase):
     def test_muerto_no_ejecuta_futuros_eventos(self):
         estado = partida()
         rata = con_enemigo(estado, vida=1)
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         self.assertIsNone(rata.proximo_evento)
-        self.assertTrue(estado.agenda.esta_vacia())
-        with self.assertRaises(IndexError):
-            estado.ejecutar_siguiente()
+        # en la agenda solo queda el siguiente turno del jugador
+        self.assertEqual(estado.agenda.tamano(), 1)
+        self.assertTrue(estado.es_turno_del_jugador())
+        self.assertEqual(estado.avanzar_hasta_turno_jugador(), [])
         self.assertEqual(estado.jugador.vida, 30)
 
     def test_evento_de_un_muerto_que_llega_a_ejecutarse_se_ignora(self):
         estado = partida()
         rata = con_enemigo(estado, vida=1)
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         estado.agenda.programar(5, Evento("accion", "e-201"))   # evento colado
         self.assertIsNone(estado.ejecutar_siguiente())
         self.assertEqual(estado.jugador.vida, 30)
-        self.assertTrue(estado.agenda.esta_vacia())              # y no se reprograma
+        self.assertEqual(estado.agenda.tamano(), 1)              # y no se reprograma
+        self.assertTrue(estado.es_turno_del_jugador())
         self.assertIsNone(rata.proximo_evento)
 
     def test_la_muerte_de_uno_no_afecta_a_los_demas(self):
         estado = partida()
         con_enemigo(estado, "e-201", vida=1)
         otra = con_enemigo(estado, "e-202")
-        estado.jugador_ataca("e-201")
-        self.assertEqual(estado.agenda.tamano(), 1)
+        ataca(estado, "e-201")
+        self.assertEqual(estado.agenda.tamano(), 2)               # la otra rata y el jugador
         resultado = estado.ejecutar_siguiente()
         self.assertIs(resultado.atacante, otra)
 
@@ -265,30 +280,30 @@ class PruebasMuerteDeEnemigo(unittest.TestCase):
         estado = partida()
         con_enemigo(estado, vida=1, suelta=("itm_pocion_menor", "itm_llave"))
         self.assertEqual(estado.suelo(2), [])
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         self.assertEqual(estado.suelo(2), ["itm_pocion_menor", "itm_llave"])
         self.assertEqual(estado.suelo(3), [])
 
     def test_enemigo_que_no_suelta_nada(self):
         estado = partida()
         con_enemigo(estado, vida=1, suelta=())
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         self.assertEqual(estado.suelo(2), [])
 
     def test_los_objetos_se_suman_en_la_misma_sala(self):
         estado = partida()
         con_enemigo(estado, "e-201", vida=1, suelta=("a",))
         con_enemigo(estado, "e-202", vida=1, suelta=("b",))
-        estado.jugador_ataca("e-201")
-        estado.jugador_ataca("e-202")
+        ataca(estado, "e-201")
+        ataca(estado, "e-202")
         self.assertEqual(estado.suelo(2), ["a", "b"])
 
     def test_no_suelta_dos_veces(self):
         estado = partida()
         con_enemigo(estado, vida=1)
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         with self.assertRaises(ValueError):
-            estado.jugador_ataca("e-201")
+            ataca(estado, "e-201")
         self.assertEqual(estado.suelo(2), ["itm_pocion_menor"])
 
 
@@ -297,15 +312,15 @@ class PruebasActorMuertoNoActua(unittest.TestCase):
     def test_no_se_puede_atacar_a_un_muerto(self):
         estado = partida()
         rata = con_enemigo(estado, vida=1)
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         self.assertFalse(puede_atacar(estado.jugador, rata))
         with self.assertRaises(ValueError):
-            estado.jugador_ataca("e-201")
+            ataca(estado, "e-201")
 
     def test_un_muerto_no_ataca(self):
         estado = partida()
         rata = con_enemigo(estado, vida=1)
-        estado.jugador_ataca("e-201")
+        ataca(estado, "e-201")
         self.assertFalse(puede_atacar(rata, estado.jugador))
         with self.assertRaises(ValueError):
             atacar(rata, estado.jugador, estado.azar)
@@ -318,7 +333,7 @@ class PruebasActorMuertoNoActua(unittest.TestCase):
         self.assertFalse(estado.jugador.esta_vivo())
         self.assertEqual(estado.jugador.vida, 0)
         with self.assertRaises(ValueError):
-            estado.jugador_ataca("e-201")
+            estado.jugador_ataca("e-201")            # muerto ya no tiene turno
         self.assertIsNone(estado.ejecutar_siguiente())   # ya no hay a quien atacar
         self.assertEqual(rata.vida, 12)
 

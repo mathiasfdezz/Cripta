@@ -141,11 +141,11 @@ class PruebasPuertas(PruebasBase):
         puerta = estado.abrir_puerta("E")
         self.assertTrue(puerta.esta_abierta())
         self.assertEqual(estado.jugador.sala, 1)                       # abrir no mueve
-        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 100)
+        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 50)   # abrir cuesta 50
         estado.avanzar_hasta_turno_jugador()
         self.assertEqual(estado.mover_jugador("E"), 4)                 # ahora si
         self.assertEqual(estado.jugador.sala, 4)
-        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 200)
+        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 150)
         estado.avanzar_hasta_turno_jugador()
         self.assertEqual(estado.mover_jugador("O"), 1)
 
@@ -223,8 +223,8 @@ class PruebasPuertas(PruebasBase):
         estado.avanzar_hasta_turno_jugador()
         self.assertEqual(estado.mover_jugador("O"), 2)
         self.assertTrue(estado.jugador.inventario.tiene_objeto_id("itm_llave_bronce"))
-        # N, abrir, E, O: cuatro acciones de 100; los rechazos no gastaron tiempo
-        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 400)
+        # N, E y O cuestan 100 y abrir 50; los rechazos no gastaron tiempo
+        self.assertEqual(estado.jugador.proximo_evento.tiempo_siguiente, 350)
 
 
 if __name__ == "__main__":

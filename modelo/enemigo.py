@@ -2,6 +2,10 @@ from modelo.actor import Actor
 
 CLASE_ENEMIGO = "enemigo"
 
+GUARDIAN = "guardián"
+ERRANTE = "errante"
+RASTREADOR = "rastreador"
+
 
 class Enemigo(Actor):
     def __init__(self, instancia, ficha, sala):
@@ -17,7 +21,7 @@ class Enemigo(Actor):
         self.instancia = instancia.instancia
         self.tipo = ficha.id
         self.nombre = ficha.nombre
-        # solo se guarda: guardián / errante / rastreador se implementan aparte
+        # guardián / errante / rastreador: lo usa EstadoPartida._comportarse
         self.comportamiento = ficha.comportamiento
         self.suelta = tuple(ficha.suelta)   # ids de catálogo que deja al morir
         # no actúa hasta que el jugador entra a su sala; una vez activo sigue activo

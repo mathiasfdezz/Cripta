@@ -1,5 +1,5 @@
 from estructuras.vector_ordenado import VectorOrdenado
-from modelo.puerta import OPUESTA, Puerta
+from modelo.puerta import Puerta, opuesta
 
 
 class Esqueleto:
@@ -60,5 +60,5 @@ class Esqueleto:
         # los dos lados de una conexion: (sala, direccion) y (destino, direccion opuesta);
         # ordenados, ambos lados dan la misma clave
         lado = (id_sala, salida.direccion)
-        otro = (salida.sala_destino, OPUESTA.get(salida.direccion, salida.direccion))
+        otro = (salida.sala_destino, opuesta(salida.direccion))
         return (lado, otro) if lado <= otro else (otro, lado)

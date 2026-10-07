@@ -1,5 +1,13 @@
 # dirección contraria: lo que sale por N de una sala entra por S en la otra, etc.
-OPUESTA = {"N": "S", "S": "N", "E": "O", "O": "E"}
+# tupla de pares y no dict: el enunciado prohíbe dict como tabla de búsqueda
+_OPUESTAS = (("N", "S"), ("S", "N"), ("E", "O"), ("O", "E"))
+
+
+def opuesta(direccion):
+    for desde, hacia in _OPUESTAS:
+        if desde == direccion:
+            return hacia
+    return direccion
 
 
 class Puerta:

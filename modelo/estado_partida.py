@@ -2,18 +2,20 @@ import random
 
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.agenda_eventos import AgendaEventos
-from modelo.combate import atacar
-from modelo.enemigo import Enemigo
+from modelo.combate import atacar, puede_atacar
+from modelo.enemigo import ERRANTE, RASTREADOR, Enemigo
 from modelo.evento import Evento
 from modelo.movimiento import (MovimientoInvalido, NO_ES_TURNO, PUERTA_ABIERTA, PUERTA_CERRADA,
                                SALA_NO_DISPONIBLE, SIN_LLAVE, SIN_MAPA, SIN_SALIDA)
+from modelo.rastro import Rastro
 
 EVENTO_ACCION = "accion"
 # un costo equivale a esa misma cantidad de tiempo a velocidad 100; a más velocidad, menos tiempo
 VELOCIDAD_BASE = 100
 COSTO_ACCION = 100          # acción de un enemigo (también su primera acción al activarse)
 COSTO_MOVER = 100
-COSTO_ABRIR_PUERTA = 100
+COSTO_ATACAR = 100
+COSTO_ABRIR_PUERTA = 50
 
 
 def duracion_accion(velocidad, costo=COSTO_ACCION):
@@ -25,8 +27,8 @@ class EstadoPartida:
     misma semilla y mismas acciones dan siempre el mismo resultado.
 
     El jugador también tiene su evento en la agenda: es su turno cuando ese evento
-    es el siguiente. Usa el turno con mover_jugador / abrir_puerta, que programan
-    el siguiente turno costo más adelante."""
+    es el siguiente. Usa el turno con mover_jugador / abrir_puerta / jugador_ataca,
+    que programan el siguiente turno costo más adelante."""
 
     def __init__(self, semilla, jugador, esqueleto=None):
         self.semilla = semilla
@@ -34,6 +36,7 @@ class EstadoPartida:
         self.agenda = AgendaEventos()
         self.jugador = jugador
         self.esqueleto = esqueleto
+        self.rastro = None if esqueleto is None else Rastro(esqueleto)
         self.tiempo = 0
         self._enemigos = VectorOrdenado()   # instancia -> Enemigo
         self._suelo = VectorOrdenado()      # sala -> lista de ids de catálogo
@@ -45,6 +48,7 @@ class EstadoPartida:
             raise ValueError("la partida ya empezó")
         self.tiempo = 0
         self._programar_turno_jugador(0)
+        self._marcar_rastro()
         self.activar_enemigos(self.jugador.sala)
 
     # ------------------------------------------------------------ enemigos
@@ -136,6 +140,7 @@ class EstadoPartida:
             raise MovimientoInvalido(PUERTA_CERRADA, "la puerta está cerrada: hay que abrirla antes")
         self._gastar_turno(COSTO_MOVER)
         self.jugador.sala = salida.sala_destino
+        self._marcar_rastro()
         self.activar_enemigos(salida.sala_destino)
         return salida.sala_destino
 
@@ -150,8 +155,14 @@ class EstadoPartida:
         if not self.jugador.puede_abrir(puerta):
             raise MovimientoInvalido(SIN_LLAVE, "falta la llave de esta puerta")
         self._gastar_turno(COSTO_ABRIR_PUERTA)
+        self._marcar_rastro()
         puerta.abrir()
         return puerta
+
+    def _marcar_rastro(self):
+        # cada acción del jugador refresca el rastro de la sala donde queda
+        if self.rastro is not None:
+            self.rastro.marcar(self.jugador.sala, self.tiempo)
 
     def _exigir_turno(self):
         if not self.es_turno_del_jugador():
@@ -168,8 +179,10 @@ class EstadoPartida:
     # -------------------------------------------------------------- combate
 
     def jugador_ataca(self, instancia=None):
-        """El jugador ataca a un enemigo de su sala. Con más de uno hay que elegir
-        por instancia; con uno solo se puede omitir."""
+        """El jugador ataca a un enemigo de su sala en su turno. Cuesta COSTO_ATACAR.
+        Con más de un enemigo hay que elegir por instancia; con uno solo se puede
+        omitir. Si no se puede atacar no se gasta el turno."""
+        self._exigir_turno()
         if instancia is None:
             presentes = self.enemigos_en_sala(self.jugador.sala)
             if not presentes:
@@ -181,6 +194,10 @@ class EstadoPartida:
             objetivo = self._enemigos.buscar(instancia)
             if objetivo is None:
                 raise ValueError(f"no existe el enemigo {instancia}")
+        if not puede_atacar(self.jugador, objetivo):
+            raise ValueError(f"no se puede atacar a {objetivo.id}: debe estar vivo y en la misma sala")
+        self._gastar_turno(COSTO_ATACAR)
+        self._marcar_rastro()
         return self._atacar(self.jugador, objetivo)
 
     def ejecutar_siguiente(self):
@@ -202,8 +219,25 @@ class EstadoPartida:
         if evento.tipo == EVENTO_ACCION:
             if self.jugador.esta_vivo() and enemigo.sala == self.jugador.sala:
                 resultado = self._atacar(enemigo, self.jugador)
+            else:
+                self._comportarse(enemigo)
             self.programar_accion(enemigo)
         return resultado
+
+    def _comportarse(self, enemigo):
+        """Lo que hace un enemigo que no comparte sala con el jugador. Moverse o
+        esperar cuestan lo mismo (100), así que la próxima acción no cambia."""
+        if self.rastro is None:
+            return
+        if enemigo.comportamiento == ERRANTE:
+            opciones = self.rastro.salidas_abiertas(enemigo.sala)
+            if opciones:
+                enemigo.sala = opciones[self.azar.randrange(len(opciones))]
+        elif enemigo.comportamiento == RASTREADOR:
+            destino = self.rastro.sala_mas_fresca(enemigo.sala, self.tiempo)
+            if destino is not None:
+                enemigo.sala = destino
+        # guardián: espera, nunca deja su sala
 
     def _atacar(self, atacante, defensor):
         resultado = atacar(atacante, defensor, self.azar)
