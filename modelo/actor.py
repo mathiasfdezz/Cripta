@@ -25,5 +25,9 @@ class Actor:
     def recibir_dano(self, dano):
         self.vida = max(0, self.vida - dano)
 
+    def puede_abrir(self, puerta):
+        # sin inventario no hay llaves: solo el jugador abre puertas
+        return False
+
     def __repr__(self):
         return f"{type(self).__name__}({self.id}, sala={self.sala}, vida={self.vida})"

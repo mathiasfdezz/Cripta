@@ -103,14 +103,24 @@ class PruebasEstadoPartida(unittest.TestCase):
         self.assertIsInstance(estado.azar, random.Random)
         self.assertEqual(estado.azar.randint(0, 4), random.Random(7).randint(0, 4))
 
-    def test_colocar_enemigo_programa_su_primera_accion(self):
+    def test_colocar_enemigo_lo_deja_inactivo(self):
         estado = EstadoPartida(1, jugador())
         e = estado.colocar_enemigo(InstanciaEnemigo("e-201", "ent_rata_gigante", 12),
                                    ficha_enemigo(), 2)
         self.assertIs(estado.enemigo("e-201"), e)
+        self.assertFalse(e.activo)
+        self.assertIsNone(e.proximo_evento)
+        self.assertTrue(estado.agenda.esta_vacia())
+
+    def test_activar_programa_su_primera_accion(self):
+        estado = EstadoPartida(1, jugador())
+        e = estado.colocar_enemigo(InstanciaEnemigo("e-201", "ent_rata_gigante", 12),
+                                   ficha_enemigo(), 2)
+        estado.activar_enemigos(2)
+        self.assertTrue(e.activo)
         self.assertEqual(estado.agenda.tamano(), 1)
         tiempo, _, evento = estado.agenda.ver_siguiente()
-        self.assertEqual(tiempo, 66)             # 10000 // 150
+        self.assertEqual(tiempo, 66)             # costo 100 a velocidad 150: 100 * 100 // 150
         self.assertIs(evento, e.proximo_evento)
         self.assertEqual(evento.objetivo, "e-201")
 
@@ -140,6 +150,8 @@ class PruebasEstadoPartida(unittest.TestCase):
         presentes = estado.enemigos_en_sala(2)
         self.assertEqual([e.instancia for e in presentes], ["e-201", "e-202"])
         self.assertEqual([e.vida for e in presentes], [12, 12])
+        self.assertEqual(estado.agenda.tamano(), 0)      # cargados, pero sin actuar
+        estado.activar_enemigos(2)
         self.assertEqual(estado.agenda.tamano(), 2)
 
         guardian = ficha_catalogo_desde_json(leer_json("catalogo", "fichas", "ent_guardian_oseo.json"))

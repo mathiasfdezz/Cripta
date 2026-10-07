@@ -17,3 +17,7 @@ class Jugador(Actor):
     def defensa_efectiva(self):
         # la armadura equipada suma su bonus
         return self.defensa + (self.inventario.bonus_defensa() or 0)
+
+    def puede_abrir(self, puerta):
+        # abre una puerta quien tenga la llave que ella pide; la llave no se gasta
+        return puerta.llave is not None and self.inventario.tiene_objeto_id(puerta.llave)

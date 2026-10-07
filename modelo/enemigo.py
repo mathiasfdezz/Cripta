@@ -20,3 +20,5 @@ class Enemigo(Actor):
         # solo se guarda: guardián / errante / rastreador se implementan aparte
         self.comportamiento = ficha.comportamiento
         self.suelta = tuple(ficha.suelta)   # ids de catálogo que deja al morir
+        # no actúa hasta que el jugador entra a su sala; una vez activo sigue activo
+        self.activo = False

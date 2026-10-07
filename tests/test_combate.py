@@ -45,8 +45,11 @@ def partida(semilla=1, sala_jugador=2, **kw):
 
 
 def con_enemigo(estado, instancia="e-201", sala=2, vida=12, **kw):
-    return estado.colocar_enemigo(InstanciaEnemigo(instancia, "ent_rata_gigante", vida),
-                                  ficha(**kw), sala)
+    """Coloca un enemigo y lo deja activo (programado en la agenda)."""
+    enemigo = estado.colocar_enemigo(InstanciaEnemigo(instancia, "ent_rata_gigante", vida),
+                                     ficha(**kw), sala)
+    estado.activar_enemigos(sala)
+    return enemigo
 
 
 class PruebasCalculoDeDano(unittest.TestCase):
