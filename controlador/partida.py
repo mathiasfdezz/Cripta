@@ -6,6 +6,7 @@ from adaptadores.cabecera_partida import CabeceraPartida
 from adaptadores.error_fuente_datos import ErrorFuenteDatos
 from adaptadores.guardado_binario import GuardadoIncompatible, GuardadoInvalido
 from adaptadores.guardado_partida import GuardadoPartida
+from controlador.uso_de_fichas import UsoDeFichas
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.bitacora import Bitacora
 from modelo.esqueleto import Esqueleto
@@ -41,6 +42,7 @@ class ControladorPartida:
         self.estado = None
         self._pedidas = VectorOrdenado()   # salas cuyo contenido ya se pidió
         self._nuevos = []
+        self._uso = UsoDeFichas(cache)
         self.esqueleto = self._cargar_esqueleto()
         jugador = Jugador(datos.sala_inicial, datos.jugador, Inventario(datos.inventario_max))
         self.estado = EstadoPartida(semilla, jugador, self.esqueleto, obtener_ficha=cache.obtener)
@@ -51,6 +53,7 @@ class ControladorPartida:
         if not self.estado.contenido_cargado(datos.sala_inicial):
             raise ErrorFuenteDatos("no se pudo cargar el contenido de la sala inicial")
         self.estado.iniciar()
+        self._actualizar_fichas_en_uso()
         self._avisar(f"Entras a {self.esqueleto.obtener(datos.sala_inicial).nombre}.")
 
     # ----------------------------------------------------------------- bucle
@@ -133,6 +136,7 @@ class ControladorPartida:
                 self._avisar(f"No entiendo '{texto}'. Escribe ayuda para ver los comandos.")
         except MovimientoInvalido as error:
             self._avisar(f"No se puede: {error}.")
+        self._actualizar_fichas_en_uso()
         self.vista.mostrar_resultado(texto, self._nuevos)
 
     # ---------------------------------------------------------------- acciones
@@ -187,6 +191,13 @@ class ControladorPartida:
     def _avisar(self, texto):
         self.bitacora.agregar(texto)
         self._nuevos.append(texto)
+
+    def _actualizar_fichas_en_uso(self):
+        # lo que está en uso no puede salir de la caché (sección 4.4)
+        try:
+            self._uso.actualizar(self.estado.fichas_en_uso())
+        except (ErrorFuenteDatos, KeyError) as error:
+            self._avisar(f"No se pudo recuperar una ficha del catálogo: {error}")
 
     # --------------------------------------------------------- guardar y cargar
 

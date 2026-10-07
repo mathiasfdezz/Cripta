@@ -34,7 +34,7 @@ class DescargadorOffline:
                 ids_sala.append(leer_campo(sala, "id", operacion_pagina))
 
         tipos = []
-        descargadas = set()
+        descargadas = []
         for i in range(0, len(ids_sala), MAX_POR_LOTE):
             lista = ",".join(str(s) for s in ids_sala[i:i + MAX_POR_LOTE])
             operacion_lote = f"contenido de salas {lista}"
@@ -43,7 +43,7 @@ class DescargadorOffline:
             for contenido in leer_campo(respuesta, "contenido", operacion_lote):
                 sala = leer_campo(contenido, "sala", operacion_lote)
                 self._guardar(self._rutas.contenido_sala(cripta_id, sala), contenido)
-                descargadas.add(sala)
+                descargadas.append(sala)
                 for enemigo in contenido.get("enemigos") or []:
                     self._agregar_sin_repetir(tipos, leer_campo(enemigo, "tipo", operacion_lote))
                 for objeto in contenido.get("objetos") or []:

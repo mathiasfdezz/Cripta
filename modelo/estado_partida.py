@@ -138,6 +138,17 @@ class EstadoPartida:
     def enemigos_vivos(self):
         return [e for _, e in self._enemigos if e.esta_vivo()]
 
+    def fichas_en_uso(self):
+        """Ids de catálogo que hoy usa alguna instancia: enemigos vivos activos o en
+        la sala del jugador, el inventario, y el suelo y las trampas de su sala.
+        Esas fichas no se pueden liberar de la caché (sección 4.4)."""
+        sala = self.jugador.sala
+        ids = [e.tipo for e in self.enemigos_vivos() if e.activo or e.sala == sala]
+        ids.extend(f.id for f in self.jugador.inventario.obtener_elementos())
+        ids.extend(self.suelo(sala))
+        ids.extend(t.tipo for t in self.trampas_en(sala))
+        return ids
+
     def restaurar_sala(self, sala, objetos, trampas, cargada):
         """Al cargar una partida guardada: lo que había en la sala en ese momento.
         trampas: lista de Trampa con su estado (armada o no)."""
