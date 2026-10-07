@@ -4,8 +4,9 @@ import zlib
 from estructuras.ordenamientos import ordenar
 
 MAGIC = b"CRPT"
-VERSION_FORMATO = 1
+VERSION_FORMATO = 2
 VIDA_DEL_CATALOGO = -1
+NINGUNO = -1   # rastro, antorcha o cursor que no existen
 
 _PREFIJO = struct.Struct("<4sHqqIQQ")
 _ENTRADA_INDICE = struct.Struct("<iQI")
@@ -45,25 +46,43 @@ class DatosCabecera(_Datos):
 
 
 class DatosJugador(_Datos):
-    _campos = ("vida", "sala", "tiempo_siguiente", "inventario")
+    """Registro del jugador y de lo global de la partida: contadores, agenda
+    pendiente y estado del azar, para que al cargar se siga exactamente igual."""
+    _campos = ("vida", "sala", "tiempo_siguiente", "inventario", "velocidad", "cursor",
+               "acciones", "enemigos_derrotados", "salida_abierta", "antorcha_hasta",
+               "siguiente_secuencia", "azar", "eventos", "bitacora", "comandos")
 
-    def __init__(self, vida, sala, tiempo_siguiente, inventario):
+    def __init__(self, vida, sala, tiempo_siguiente, inventario, velocidad=100, cursor=NINGUNO,
+                 acciones=0, enemigos_derrotados=0, salida_abierta=False, antorcha_hasta=None,
+                 siguiente_secuencia=1, azar=None, eventos=(), bitacora="", comandos=0):
         self.vida = vida
         self.sala = sala
         self.tiempo_siguiente = tiempo_siguiente
         self.inventario = inventario
+        self.velocidad = velocidad
+        self.cursor = cursor
+        self.acciones = acciones
+        self.enemigos_derrotados = enemigos_derrotados
+        self.salida_abierta = salida_abierta
+        self.antorcha_hasta = antorcha_hasta
+        self.siguiente_secuencia = siguiente_secuencia
+        self.azar = azar                    # lo que devuelve random.Random.getstate()
+        self.eventos = list(eventos)        # [(tiempo, secuencia, tipo, objetivo, dato)]
+        self.bitacora = bitacora            # bitácora de la partida y cuántos comandos
+        self.comandos = comandos            # tenía al guardar, para que el replay siga
 
 
 class DatosSala(_Datos):
-    _campos = ("id", "rastro", "puertas", "objetos", "enemigos", "trampas")
+    _campos = ("id", "rastro", "puertas", "objetos", "enemigos", "trampas", "cargada")
 
-    def __init__(self, id_sala, rastro, puertas, objetos, enemigos, trampas):
+    def __init__(self, id_sala, rastro, puertas, objetos, enemigos, trampas, cargada=True):
         self.id = id_sala
         self.rastro = rastro
         self.puertas = puertas
         self.objetos = objetos
         self.enemigos = enemigos
         self.trampas = trampas
+        self.cargada = cargada   # False: solo está porque hay un enemigo que llegó ahí
 
 
 def _cadena(texto):
@@ -88,11 +107,48 @@ def _verificar_crc(registro, que):
     return payload
 
 
+def _opcional(valor):
+    return NINGUNO if valor is None else valor
+
+
+def _empaquetar_azar(azar):
+    if azar is None:
+        return struct.pack("<B", 0)
+    version, internos, gauss = azar
+    partes = [struct.pack("<BBH", 1, version, len(internos)),
+              struct.pack("<%dI" % len(internos), *internos)]
+    partes.append(struct.pack("<Bd", 0, 0.0) if gauss is None else struct.pack("<Bd", 1, gauss))
+    return b"".join(partes)
+
+
+def _desempaquetar_azar(datos, pos):
+    (hay,) = struct.unpack_from("<B", datos, pos)
+    pos += 1
+    if not hay:
+        return None, pos
+    version, n = struct.unpack_from("<BH", datos, pos)
+    pos += struct.calcsize("<BH")
+    internos = struct.unpack_from("<%dI" % n, datos, pos)
+    pos += 4 * n
+    hay_gauss, gauss = struct.unpack_from("<Bd", datos, pos)
+    pos += struct.calcsize("<Bd")
+    return (version, internos, gauss if hay_gauss else None), pos
+
+
 def _empaquetar_jugador(j):
     partes = [struct.pack("<iiqH", j.vida, j.sala, j.tiempo_siguiente, len(j.inventario))]
     for id_obj, equipado in j.inventario:
         partes.append(_cadena(id_obj))
         partes.append(struct.pack("<B", 1 if equipado else 0))
+    partes.append(struct.pack("<iiiiBqq", j.velocidad, j.cursor, j.acciones,
+                              j.enemigos_derrotados, 1 if j.salida_abierta else 0,
+                              _opcional(j.antorcha_hasta), j.siguiente_secuencia))
+    partes.append(_empaquetar_azar(j.azar))
+    partes.append(struct.pack("<H", len(j.eventos)))
+    for tiempo, secuencia, tipo, objetivo, dato in j.eventos:
+        partes.append(struct.pack("<qq", tiempo, secuencia) + _cadena(tipo) + _cadena(objetivo)
+                      + struct.pack("<Bq", 0 if dato is None else 1, 0 if dato is None else dato))
+    partes.append(_cadena(j.bitacora) + struct.pack("<I", j.comandos))
     return _con_crc(b"".join(partes))
 
 
@@ -106,7 +162,26 @@ def _desempaquetar_jugador(registro):
         (eq,) = struct.unpack_from("<B", datos, pos)
         pos += 1
         inventario.append((id_obj, bool(eq)))
-    return DatosJugador(vida, sala, tiempo, inventario)
+    (velocidad, cursor, acciones, enemigos, salida_abierta, antorcha,
+     secuencia) = struct.unpack_from("<iiiiBqq", datos, pos)
+    pos += struct.calcsize("<iiiiBqq")
+    azar, pos = _desempaquetar_azar(datos, pos)
+    (n,) = struct.unpack_from("<H", datos, pos)
+    pos += 2
+    eventos = []
+    for _ in range(n):
+        tiempo_evento, secuencia_evento = struct.unpack_from("<qq", datos, pos)
+        pos += 16
+        tipo, pos = _leer_cadena(datos, pos)
+        objetivo, pos = _leer_cadena(datos, pos)
+        hay_dato, dato = struct.unpack_from("<Bq", datos, pos)
+        pos += struct.calcsize("<Bq")
+        eventos.append((tiempo_evento, secuencia_evento, tipo, objetivo, dato if hay_dato else None))
+    bitacora, pos = _leer_cadena(datos, pos)
+    (comandos,) = struct.unpack_from("<I", datos, pos)
+    return DatosJugador(vida, sala, tiempo, inventario, velocidad, cursor, acciones, enemigos,
+                        bool(salida_abierta), None if antorcha == NINGUNO else antorcha,
+                        secuencia, azar, eventos, bitacora, comandos)
 
 
 def _empaquetar_sala(s):
@@ -124,6 +199,7 @@ def _empaquetar_sala(s):
     p.append(struct.pack("<H", len(s.trampas)))
     for inst, tipo, armada in s.trampas:
         p.append(_cadena(inst) + _cadena(tipo) + struct.pack("<B", 1 if armada else 0))
+    p.append(struct.pack("<B", 1 if s.cargada else 0))
     return _con_crc(b"".join(p))
 
 
@@ -159,7 +235,8 @@ def _desempaquetar_sala(registro):
         (armada,) = struct.unpack_from("<B", d, pos)
         pos += 1
         trampas.append((inst, tipo, bool(armada)))
-    return DatosSala(id_sala, rastro, puertas, objetos, enemigos, trampas)
+    (cargada,) = struct.unpack_from("<B", d, pos)
+    return DatosSala(id_sala, rastro, puertas, objetos, enemigos, trampas, bool(cargada))
 
 
 def guardar(ruta, cabecera, jugador, salas):

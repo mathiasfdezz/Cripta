@@ -175,7 +175,7 @@ class PruebasPuertas(PruebasBase):
         self.assertTrue(estado.esqueleto.puede_atravesar(1, "E"))
         self.assertEqual(len(inventario), 1)
 
-    def test_puerta_abierta_se_cruza_sin_llave_desde_ambos_lados(self):
+    def test_volver_por_el_otro_lado_no_necesita_llave(self):
         estado = partida(mapa_cruz(), objetos=[llave()])
         estado.abrir_puerta("E")
         estado.avanzar_hasta_turno_jugador()
@@ -183,7 +183,7 @@ class PruebasPuertas(PruebasBase):
         estado.avanzar_hasta_turno_jugador()
         estado.jugador.inventario.soltar_actual()            # ya no tiene la llave
         self.assertFalse(estado.jugador.inventario.tiene_objeto_id("itm_llave"))
-        self.assertEqual(estado.mover_jugador("O"), 1)       # la puerta es la misma por el otro lado
+        self.assertEqual(estado.mover_jugador("O"), 1)       # la salida O de la sala 4 ya estaba abierta
         estado.avanzar_hasta_turno_jugador()
         self.assertEqual(estado.mover_jugador("E"), 4)
 
@@ -218,7 +218,7 @@ class PruebasPuertas(PruebasBase):
         self.assert_rechazada(estado, SIN_LLAVE, estado.abrir_puerta, "E")
         estado.jugador.inventario.recoger(bronce)
         estado.abrir_puerta("E")
-        self.assertTrue(mapa.puede_atravesar(5, "O"))        # abierta tambien desde la sala 5
+        self.assertTrue(mapa.puede_atravesar(5, "O"))        # el lado de la sala 5 nunca estuvo cerrado
         estado.avanzar_hasta_turno_jugador()
         self.assertEqual(estado.mover_jugador("E"), 5)
         estado.avanzar_hasta_turno_jugador()

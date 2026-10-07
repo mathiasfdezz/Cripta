@@ -38,72 +38,43 @@ def esqueleto_cripta_01():
     return e
 
 
-class PruebasPuertaCompartida(unittest.TestCase):
+class PruebasPuertasIndependientes(unittest.TestCase):
+    """Cada lado de una conexión es una puerta distinta (lo confirmó el profesor)."""
 
-    def test_cripta_01_puerta_2_y_5_es_la_misma_desde_ambos_lados(self):
+    def test_cripta_01_cada_lado_de_la_2_5_es_su_propia_puerta(self):
         e = esqueleto_cripta_01()
-        desde_2 = e.puerta(2, "E")
-        desde_5 = e.puerta(5, "O")
-        self.assertIsNotNone(desde_2)
-        self.assertIs(desde_2, desde_5)
-        # el JSON solo la declara cerrada desde la sala 2, pero es una sola puerta
-        self.assertTrue(desde_2.esta_cerrada())
+        self.assertIsNot(e.puerta(2, "E"), e.puerta(5, "O"))
+        # el JSON la declara cerrada solo desde la sala 2
         self.assertFalse(e.puede_atravesar(2, "E"))
-        self.assertFalse(e.puede_atravesar(5, "O"))
-
-    def test_cripta_01_datos_de_la_puerta_se_ven_desde_ambos_lados(self):
-        e = esqueleto_cripta_01()
-        for id_sala, direccion in ((2, "E"), (5, "O")):
-            puerta = e.puerta(id_sala, direccion)
-            self.assertEqual(puerta.llave, "itm_llave_bronce")
-            self.assertEqual(puerta.cierre_automatico, 500)
-        self.assertEqual(set(e.puerta(2, "E").lados), {(2, "E"), (5, "O")})
-
-    def test_cripta_01_abrir_desde_la_sala_2_la_abre_desde_la_5(self):
-        e = esqueleto_cripta_01()
-        e.puerta(2, "E").abrir()
-        self.assertTrue(e.puede_atravesar(2, "E"))
-        self.assertTrue(e.puede_atravesar(5, "O"))
-        self.assertTrue(e.puerta(5, "O").esta_abierta())
-
-    def test_cripta_01_abrir_desde_la_sala_5_la_abre_desde_la_2(self):
-        e = esqueleto_cripta_01()
-        e.puerta(5, "O").abrir()
-        self.assertTrue(e.puede_atravesar(2, "E"))
         self.assertTrue(e.puede_atravesar(5, "O"))
 
-    def test_cripta_01_cerrar_de_nuevo_afecta_a_los_dos_lados(self):
+    def test_cripta_01_cada_lado_tiene_sus_datos(self):
         e = esqueleto_cripta_01()
-        e.puerta(2, "E").abrir()
+        self.assertEqual(e.puerta(2, "E").llave, "itm_llave_bronce")
+        self.assertEqual(e.puerta(2, "E").cierre_automatico, 500)
+        self.assertIsNone(e.puerta(5, "O").llave)
+        self.assertIsNone(e.puerta(5, "O").cierre_automatico)
+
+    def test_cripta_01_abrir_un_lado_no_cambia_el_otro(self):
+        e = esqueleto_cripta_01()
         e.puerta(5, "O").cerrar()
-        self.assertFalse(e.puede_atravesar(2, "E"))
+        e.puerta(2, "E").abrir()
+        self.assertTrue(e.puede_atravesar(2, "E"))
         self.assertFalse(e.puede_atravesar(5, "O"))
 
-    def test_cripta_01_otra_puerta_cerrada_es_independiente(self):
+    def test_cripta_01_salida_hacia_la_sala_6(self):
         e = esqueleto_cripta_01()
-        self.assertIsNot(e.puerta(2, "E"), e.puerta(4, "E"))
-        # 4 <-> 6 tiene el mismo caso: cerrada solo desde la sala 4
-        self.assertIs(e.puerta(4, "E"), e.puerta(6, "O"))
-        self.assertFalse(e.puede_atravesar(6, "O"))
+        self.assertFalse(e.puede_atravesar(4, "E"))
+        self.assertTrue(e.puede_atravesar(6, "O"))
         e.puerta(2, "E").abrir()
         self.assertFalse(e.puede_atravesar(4, "E"))
-        self.assertFalse(e.puede_atravesar(6, "O"))
 
-    def test_declarada_cerrada_solo_desde_el_otro_lado(self):
-        # la sala con id menor es la que no la declara cerrada
-        e = esqueleto(sala(1, E=4), sala(4, O=(1, True)))
-        self.assertIs(e.puerta(1, "E"), e.puerta(4, "O"))
-        self.assertFalse(e.puede_atravesar(1, "E"))
-        self.assertFalse(e.puede_atravesar(4, "O"))
-
-    def test_puerta_con_las_salas_en_paginas_distintas(self):
+    def test_salas_en_paginas_distintas(self):
         e = Esqueleto()
         e.agregar_pagina(pagina(sala(2, E=(5, True)), numero=1, total=2))
         e.agregar_pagina(pagina(sala(5, O=2), numero=2, total=2))
-        self.assertIs(e.puerta(2, "E"), e.puerta(5, "O"))
-        self.assertFalse(e.puede_atravesar(5, "O"))
-        e.puerta(5, "O").abrir()
-        self.assertTrue(e.puede_atravesar(2, "E"))
+        self.assertFalse(e.puede_atravesar(2, "E"))
+        self.assertTrue(e.puede_atravesar(5, "O"))
 
     def test_agregar_otra_vez_la_pagina_no_reinicia_las_puertas(self):
         e = Esqueleto()
@@ -112,13 +83,14 @@ class PruebasPuertaCompartida(unittest.TestCase):
         e.puerta(2, "E").abrir()
         e.agregar_pagina(p)
         self.assertTrue(e.puede_atravesar(2, "E"))
-        self.assertTrue(e.puede_atravesar(5, "O"))
 
-    def test_puerta_abierta_desde_el_inicio(self):
-        e = esqueleto(sala(1, N=2), sala(2, S=1))
-        self.assertIs(e.puerta(1, "N"), e.puerta(2, "S"))
-        self.assertTrue(e.puede_atravesar(1, "N"))
-        self.assertTrue(e.puede_atravesar(2, "S"))
+    def test_reiniciar_vuelve_a_lo_que_declaro_el_api(self):
+        e = esqueleto_cripta_01()
+        e.puerta(2, "E").abrir()
+        e.puerta(5, "O").cerrar()
+        e.reiniciar_puertas()
+        self.assertFalse(e.puede_atravesar(2, "E"))
+        self.assertTrue(e.puede_atravesar(5, "O"))
 
 
 class PruebasConexionesYPuertasCerradas(unittest.TestCase):
@@ -146,12 +118,11 @@ class PruebasConexionesYPuertasCerradas(unittest.TestCase):
     def test_no_se_atraviesa_una_puerta_cerrada(self):
         e = esqueleto(sala(1, N=(2, True)), sala(2, S=1))
         self.assertFalse(e.puede_atravesar(1, "N"))
-        self.assertFalse(e.puede_atravesar(2, "S"))
+        self.assertTrue(e.puede_atravesar(2, "S"))           # el otro lado no la declara cerrada
         e.puerta(1, "N").abrir()
         self.assertTrue(e.puede_atravesar(1, "N"))
         e.puerta(1, "N").cerrar()
         self.assertFalse(e.puede_atravesar(1, "N"))
-        self.assertFalse(e.puede_atravesar(2, "S"))
 
     def test_direccion_sin_salida_o_sala_inexistente(self):
         e = esqueleto(sala(1, N=2), sala(2, S=1))
@@ -170,23 +141,18 @@ class PruebasConexionesYPuertasCerradas(unittest.TestCase):
         self.assertTrue(e.puede_atravesar(2, "O"))
 
 
-class PruebasPrecargaConPuertaCompartida(unittest.TestCase):
+class PruebasPrecargaConPuertas(unittest.TestCase):
 
-    def test_precarga_no_cruza_por_abierta_una_puerta_cerrada_desde_el_otro_lado(self):
-        # la puerta 1-2 solo se declara cerrada desde la sala 1; desde la 2 hay
-        # que tratarla como cerrada: primero se elige la salida abierta (S -> 6)
+    def test_precarga_usa_el_estado_de_cada_lado(self):
+        # la 1-2 solo se declara cerrada desde la sala 1: desde la 2 se puede pasar
         e = esqueleto(sala(1, S=(2, True)), sala(2, N=1, S=6), sala(6, N=2))
-        self.assertEqual(salas_a_precargar(e, 2, lambda _: False, limite=2), [2, 6])
+        self.assertEqual(salas_a_precargar(e, 2, lambda _: False, limite=2), [2, 1])
+        self.assertEqual(salas_a_precargar(e, 1, lambda _: False, limite=2), [1, 2])
 
     def test_precarga_cripta_01_desde_la_sala_5(self):
         e = esqueleto_cripta_01()
         self.assertEqual(salas_a_precargar(e, 5, lambda _: False, limite=1), [5])
         self.assertEqual(salas_a_precargar(e, 5, lambda _: False), [5, 2, 3, 1, 4, 6])
-
-    def test_precarga_ve_la_puerta_abierta(self):
-        e = esqueleto(sala(1, S=(2, True)), sala(2, N=1, S=6), sala(6, N=2))
-        e.puerta(1, "S").abrir()
-        self.assertEqual(salas_a_precargar(e, 2, lambda _: False, limite=2), [2, 1])
 
 
 if __name__ == "__main__":

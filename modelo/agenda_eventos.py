@@ -78,6 +78,24 @@ class AgendaEventos:
     def tamano(self):
         return self._heap.tamano() - self._cancelados_en_heap
 
+    # ------------------------------------------------ para guardar y cargar
+
+    def pendientes(self):
+        """(tiempo, secuencia, evento) de los eventos vigentes, en cualquier orden."""
+        return [entrada for entrada in self._heap._datos if not entrada[2].cancelado]
+
+    def siguiente_secuencia(self):
+        return self._siguiente_secuencia
+
+    def restaurar(self, tiempo, secuencia, evento, siguiente_secuencia):
+        """Vuelve a meter un evento guardado con su misma secuencia, así el orden
+        de los empates es el mismo que antes de guardar."""
+        evento.tiempo_siguiente = tiempo
+        evento.secuencia = secuencia
+        evento.en_agenda = True
+        self._heap.insertar((tiempo, secuencia, evento))
+        self._siguiente_secuencia = max(self._siguiente_secuencia, siguiente_secuencia)
+
     # -------------------------------------------- para deshacer (retroceso)
     # la secuencia no se rebobina: los eventos restaurados conservan la suya
     # y los nuevos siguen recibiendo números mayores, así nunca se repiten

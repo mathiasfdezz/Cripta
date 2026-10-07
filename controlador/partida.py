@@ -1,4 +1,11 @@
+import os
+from datetime import datetime
+
+from adaptadores.bitacora_partida import BitacoraPartida
+from adaptadores.cabecera_partida import CabeceraPartida
 from adaptadores.error_fuente_datos import ErrorFuenteDatos
+from adaptadores.guardado_binario import GuardadoIncompatible, GuardadoInvalido
+from adaptadores.guardado_partida import GuardadoPartida
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.bitacora import Bitacora
 from modelo.esqueleto import Esqueleto
@@ -11,14 +18,21 @@ from modelo.registro_puntaje import RegistroPuntaje
 
 DIRECCIONES = ("N", "S", "E", "O")
 CRITERIOS_INVENTARIO = ("peso", "valor", "nombre")
+# guardar y cargar no van a la bitácora: el replay no debe tocar archivos
+SIN_BITACORA = ("guardar", "cargar", "ayuda", "inv")
 
 
 class ControladorPartida:
     """Traduce los comandos del jugador a operaciones del modelo, trae el contenido
     de las salas antes de que haga falta y avisa a la vista. No dibuja nada."""
 
-    def __init__(self, datos, fuente, cache, vista, semilla):
+    def __init__(self, datos, fuente, cache, vista, semilla, version_catalogo="",
+                 carpeta_partidas="partidas"):
         self.datos = datos
+        self.version_catalogo = version_catalogo
+        self.carpeta_partidas = carpeta_partidas
+        self._bitacora_partida = None
+        self._comandos = 0
         self.fuente = fuente
         self.cache = cache
         self.vista = vista
@@ -42,6 +56,7 @@ class ControladorPartida:
 
     def jugar(self, leer_comando, bitacora_partida=None):
         """leer_comando() devuelve el siguiente comando o None si no hay más."""
+        self._bitacora_partida = bitacora_partida
         while not self.estado.terminada():
             self.vista.mostrar_partida(self.estado, self.esqueleto, self.bitacora.ultimos())
             comando = leer_comando()
@@ -52,8 +67,9 @@ class ControladorPartida:
                 continue
             if comando.lower() == "salir":
                 break
-            if bitacora_partida is not None:
-                bitacora_partida.anotar(comando)
+            if self._bitacora_partida is not None and                     comando.split()[0].lower() not in SIN_BITACORA:
+                self._bitacora_partida.anotar(comando)
+                self._comandos += 1
             self.ejecutar(comando)
         self.vista.mostrar_fin(self.estado)
 
@@ -105,6 +121,10 @@ class ControladorPartida:
                     raise MovimientoInvalido("criterio", "ordena por peso, valor o nombre")
                 self.vista.mostrar_inventario_detallado(
                     self.estado.jugador.inventario.vista_detallada(criterio))
+            elif orden == "guardar":
+                self._guardar(argumento or "guardado")
+            elif orden == "cargar":
+                self._cargar(argumento or "guardado")
             elif orden == "ayuda":
                 self.vista.mostrar_ayuda()
             else:
@@ -153,6 +173,44 @@ class ControladorPartida:
     def _avisar(self, texto):
         self.bitacora.agregar(texto)
         self._nuevos.append(texto)
+
+    # --------------------------------------------------------- guardar y cargar
+
+    def _ruta_guardado(self, nombre):
+        return os.path.join(self.carpeta_partidas, f"{nombre}.sav")
+
+    def _guardar(self, nombre):
+        if self.estado.terminada():
+            raise MovimientoInvalido("guardar", "la partida ya terminó")
+        ruta = self._ruta_guardado(nombre)
+        ruta_bitacora = "" if self._bitacora_partida is None else self._bitacora_partida.ruta
+        GuardadoPartida.guardar(ruta, self.estado, self.datos, self.version_catalogo,
+                                ruta_bitacora, self._comandos)
+        self._avisar(f"Partida guardada en {ruta}.")
+
+    def _cargar(self, nombre):
+        ruta = self._ruta_guardado(nombre)
+        try:
+            estado, ruta_bitacora, comandos = GuardadoPartida.cargar(
+                ruta, self.datos, self.version_catalogo, self.esqueleto, self.cache.obtener)
+        except FileNotFoundError:
+            raise MovimientoInvalido("cargar", f"no existe el guardado {ruta}")
+        except (GuardadoInvalido, GuardadoIncompatible, ErrorFuenteDatos) as error:
+            raise MovimientoInvalido("cargar", f"no se puede cargar {ruta}: {error}")
+        self.estado = estado
+        self._pedidas = VectorOrdenado()
+        for sala in estado.salas_cargadas():
+            self._pedidas.insertar(sala, True)
+        if self._bitacora_partida is not None:
+            # bitácora nueva: lo jugado hasta el guardado y desde aquí lo que siga
+            nueva = os.path.join(self.carpeta_partidas,
+                                 f"partida-{datetime.now():%Y%m%d-%H%M%S}-cargada.log")
+            cabecera = CabeceraPartida(self.datos.id, self.datos.version, self.version_catalogo,
+                                       estado.semilla)
+            self._bitacora_partida = BitacoraPartida.continuar(nueva, cabecera, ruta_bitacora,
+                                                               comandos)
+            self._comandos = comandos
+        self._avisar(f"Partida cargada desde {ruta}.")
 
     # ------------------------------------------------------------- contenido
 

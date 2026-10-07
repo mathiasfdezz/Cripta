@@ -24,7 +24,26 @@ class BitacoraPartida:
             archivo.write(f"version_cripta={cabecera.version_cripta}\n")
             archivo.write(f"version_catalogo={cabecera.version_catalogo}\n")
             archivo.write(f"semilla={cabecera.semilla}\n")
+            if not cabecera.reproducible:
+                archivo.write("reproducible=no\n")
             archivo.write(f"{FIN_CABECERA}\n")
+
+    @staticmethod
+    def continuar(ruta_nueva, cabecera, ruta_origen, comandos):
+        """Bitácora nueva para una partida cargada: copia los primeros comandos de la
+        bitácora original, así --replay llega al mismo punto del guardado y sigue."""
+        try:
+            _, anteriores = BitacoraPartida.leer(ruta_origen)
+            reproducible = len(anteriores) >= comandos
+        except ErrorBitacora:
+            anteriores, reproducible = [], False
+        nueva = BitacoraPartida(ruta_nueva)
+        nueva.crear(CabeceraPartida(cabecera.cripta_id, cabecera.version_cripta,
+                                    cabecera.version_catalogo, cabecera.semilla, reproducible))
+        if reproducible:
+            for comando in anteriores[:comandos]:
+                nueva.anotar(comando)
+        return nueva
 
     def anotar(self, comando):
         # se abre y se cierra en cada comando: si el programa se cae, lo jugado queda
@@ -43,6 +62,7 @@ class BitacoraPartida:
             raise ErrorBitacora(f"{ruta} no es una bitácora de partida de Cripta")
         fin = lineas.index(FIN_CABECERA)
         cripta = version_cripta = version_catalogo = semilla = None
+        reproducible = True
         for linea in lineas[1:fin]:
             clave, _, valor = linea.partition("=")
             if clave == "cripta":
@@ -53,6 +73,8 @@ class BitacoraPartida:
                 version_catalogo = valor
             elif clave == "semilla":
                 semilla = valor
+            elif clave == "reproducible":
+                reproducible = valor != "no"
         if None in (cripta, version_cripta, version_catalogo, semilla):
             raise ErrorBitacora(f"a la cabecera de {ruta} le faltan datos")
         try:
@@ -60,4 +82,5 @@ class BitacoraPartida:
         except ValueError:
             raise ErrorBitacora(f"la semilla de {ruta} no es un número")
         comandos = [linea for linea in lineas[fin + 1:] if linea.strip()]
-        return CabeceraPartida(cripta, version_cripta, version_catalogo, semilla), comandos
+        return CabeceraPartida(cripta, version_cripta, version_catalogo, semilla,
+                               reproducible), comandos

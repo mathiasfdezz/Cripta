@@ -6,7 +6,6 @@ from dtos.instancia_enemigo import InstanciaEnemigo
 from modelo.estado_partida import EstadoPartida
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
-from modelo.puerta import opuesta
 from modelo.rastro import Rastro
 from tests.test_esqueleto import esqueleto, sala
 
@@ -32,12 +31,6 @@ def con_enemigo(estado, sala_enemigo, comportamiento, instancia="e-1", velocidad
     enemigo.activo = True
     estado.programar_accion(enemigo)
     return enemigo
-
-
-class PruebasDireccionOpuesta(unittest.TestCase):
-
-    def test_opuestas(self):
-        self.assertEqual([opuesta(d) for d in "NSEO"], ["S", "N", "O", "E"])
 
 
 class PruebasCostos(unittest.TestCase):
@@ -102,11 +95,13 @@ class PruebasRastro(unittest.TestCase):
         self.assertEqual(rastro.sala_mas_fresca(2, 100), 1)
 
     def test_no_mira_detras_de_puertas_cerradas(self):
-        mapa = esqueleto(sala(1, E=(2, True)), sala(2, O=1))
+        # cerrada solo desde la sala 2: el rastreador de la 2 no puede ir a la 1
+        mapa = esqueleto(sala(1, E=2), sala(2, O=(1, True)))
         rastro = Rastro(mapa)
         rastro.marcar(1, 10)
         self.assertIsNone(rastro.sala_mas_fresca(2, 20))
-        self.assertEqual(rastro.salidas_abiertas(1), [])
+        self.assertEqual(rastro.salidas_abiertas(2), [])
+        self.assertEqual(rastro.salidas_abiertas(1), [2])
 
 
 class PruebasComportamientos(unittest.TestCase):

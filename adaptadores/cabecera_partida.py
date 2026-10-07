@@ -7,3 +7,4 @@ class CabeceraPartida:
     version_cripta: str
     version_catalogo: str
     semilla: int
+    reproducible: bool = True   # False si viene de un guardado sin su bitácora original

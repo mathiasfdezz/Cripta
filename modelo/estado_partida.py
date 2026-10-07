@@ -72,7 +72,7 @@ class EstadoPartida:
         self.controlar_contenido = False
         self.sala_salida = None
         self.llave_salida = None
-        self._puerta_salida_abierta = False
+        self.puerta_salida_abierta = False
         self._obtener_ficha = obtener_ficha
         self._enemigos = VectorOrdenado()   # instancia -> Enemigo
         self._suelo = VectorOrdenado()      # sala -> lista de ids de catálogo
@@ -115,6 +115,24 @@ class EstadoPartida:
 
     def contenido_cargado(self, sala):
         return self._cargadas.contiene(sala)
+
+    def salas_cargadas(self):
+        return [sala for sala, _ in self._cargadas]
+
+    def trampas_en(self, sala):
+        lista = self._trampas.buscar(sala)
+        return [] if lista is None else list(lista)
+
+    def enemigos_vivos(self):
+        return [e for _, e in self._enemigos if e.esta_vivo()]
+
+    def restaurar_sala(self, sala, objetos, trampas, cargada):
+        """Al cargar una partida guardada: lo que había en la sala en ese momento."""
+        for id_objeto in objetos:
+            self._suelo_agregar(sala, id_objeto)
+        self._trampas.insertar(sala, list(trampas))
+        if cargada:
+            self._cargadas.insertar(sala, True)
 
     # ------------------------------------------------------------ enemigos
 
@@ -221,7 +239,7 @@ class EstadoPartida:
         self._asignar(self.jugador, "sala", destino)
         self._marcar_rastro()
         self.activar_enemigos(destino)
-        if destino == self.sala_salida and self._puerta_salida_abierta:
+        if destino == self.sala_salida and self.puerta_salida_abierta:
             self._asignar(self, "resultado", VICTORIA)
             self._cancelar_turno_jugador()
         return destino
@@ -239,10 +257,9 @@ class EstadoPartida:
         self._gastar_turno(COSTO_ABRIR_PUERTA)
         self._marcar_rastro()
         self._recordar(puerta, "cerrada")
-        self._recordar(puerta, "_tocada")
         puerta.abrir()
         if self.llave_salida is not None and puerta.llave == self.llave_salida:
-            self._asignar(self, "_puerta_salida_abierta", True)
+            self._asignar(self, "puerta_salida_abierta", True)
         return puerta
 
     def _salida(self, direccion):

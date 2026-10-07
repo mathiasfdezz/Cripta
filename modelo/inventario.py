@@ -105,6 +105,13 @@ class Inventario:
 
         return nodo.dato
 
+    def marcar_equipado(self, nodo):
+        # al cargar una partida: el orden ya viene guardado, solo se recuerda qué estaba equipado
+        if nodo.dato.clase == CLASE_ARMA:
+            self._nodo_arma = nodo
+        elif nodo.dato.clase == CLASE_ARMADURA:
+            self._nodo_armadura = nodo
+
     def arma_equipada(self):
         return None if self._nodo_arma is None else self._nodo_arma.dato
 
