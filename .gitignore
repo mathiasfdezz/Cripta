@@ -3,6 +3,15 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.vscode/
+.idea/
+
+# archivos que genera el juego
 cache_catalogo/
 partidas/
 puntajes.txt
+
+# archivos del sistema
+desktop.ini
+Thumbs.db
+.DS_Store
