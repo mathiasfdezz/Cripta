@@ -8,6 +8,10 @@ class MinHeap:
     def esta_vacio(self):
         return len(self._datos) == 0
 
+    def minimo_o_nada(self):
+        """Como ver_minimo, pero devuelve None si está vacío (sin lanzar error)."""
+        return self._datos[0] if self._datos else None
+
     def ver_minimo(self):
         if self.esta_vacio():
             raise IndexError("el heap está vacío")
@@ -27,26 +31,35 @@ class MinHeap:
             self._bajar(0)
         return minimo
 
+    # subir y bajar mueven un "hueco" en lugar de intercambiar en cada nivel:
+    # el elemento se escribe una sola vez, al llegar a su lugar
+
     def _subir(self, i):
+        datos = self._datos
+        elemento = datos[i]
         while i > 0:
             padre = (i - 1) // 2
-            if self._datos[i] < self._datos[padre]:
-                self._datos[i], self._datos[padre] = self._datos[padre], self._datos[i]
+            if elemento < datos[padre]:
+                datos[i] = datos[padre]
                 i = padre
             else:
                 break
+        datos[i] = elemento
 
     def _bajar(self, i):
-        n = len(self._datos)
+        datos = self._datos
+        n = len(datos)
+        elemento = datos[i]
         while True:
-            izq = 2 * i + 1
-            der = 2 * i + 2
-            menor = i
-            if izq < n and self._datos[izq] < self._datos[menor]:
-                menor = izq
-            if der < n and self._datos[der] < self._datos[menor]:
-                menor = der
-            if menor == i:
+            hijo = 2 * i + 1
+            if hijo >= n:
                 break
-            self._datos[i], self._datos[menor] = self._datos[menor], self._datos[i]
-            i = menor
+            derecho = hijo + 1
+            if derecho < n and datos[derecho] < datos[hijo]:
+                hijo = derecho
+            if datos[hijo] < elemento:
+                datos[i] = datos[hijo]
+                i = hijo
+            else:
+                break
+        datos[i] = elemento

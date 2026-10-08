@@ -89,6 +89,8 @@ class EstadoPartida:
         self._trampas_por_id = VectorOrdenado()   # instancia -> Trampa
         self._sucesos = []
         self._cargadas = VectorOrdenado()   # sala -> True cuando su contenido ya está
+        # intervalo del historial en el que ya se anotó el reloj (ver _fijar_tiempo)
+        self._tiempo_anotado_en = None
 
     def configurar_salida(self, sala_salida, llave_salida):
         self.sala_salida = sala_salida
@@ -222,12 +224,17 @@ class EstadoPartida:
         if self.jugador.proximo_evento is None:
             raise ValueError("el jugador no tiene turno: falta iniciar() o murió")
         resultados = []
-        while self.jugador.proximo_evento is not None and not self.es_turno_del_jugador():
-            resultado = self.ejecutar_siguiente()
+        # se mira la raíz de la agenda una sola vez por evento
+        while self.jugador.proximo_evento is not None:
+            entrada = self.agenda.siguiente_o_nada()
+            if entrada is None:
+                break
+            if entrada[2] is self.jugador.proximo_evento:
+                self._fijar_tiempo(entrada[0])
+                break
+            resultado = self._ejecutar(entrada)
             if resultado is not None:
                 resultados.append(resultado)
-        if self.es_turno_del_jugador():
-            self._asignar(self, "tiempo", self.agenda.ver_siguiente()[0])
         return resultados
 
     def _programar_turno_jugador(self, duracion):
@@ -245,7 +252,7 @@ class EstadoPartida:
         # a igual tiempo gana la menor secuencia: como el siguiente turno se programa
         # antes de activar enemigos, el jugador actúa antes que el grupo recién activado
         tiempo, _, _ = self.agenda.sacar_siguiente()
-        self._asignar(self, "tiempo", tiempo)
+        self._fijar_tiempo(tiempo)
         self._programar_turno_jugador(duracion_accion(self.jugador.velocidad, costo))
 
     def _exigir_turno(self):
@@ -493,11 +500,15 @@ class EstadoPartida:
         Un enemigo en la sala del jugador lo ataca; si no, aplica su comportamiento.
         Devuelve el ResultadoAtaque, o None si no hubo ataque.
         Si el siguiente evento es el turno del jugador, no lo ejecuta (ValueError)."""
-        tiempo, _, evento = self.agenda.ver_siguiente()
-        if evento is self.jugador.proximo_evento:
+        entrada = self.agenda.ver_siguiente()
+        if entrada[2] is self.jugador.proximo_evento:
             raise ValueError("es el turno del jugador")
+        return self._ejecutar(entrada)
+
+    def _ejecutar(self, entrada):
+        tiempo, _, evento = entrada
         self.agenda.sacar_siguiente()
-        self._asignar(self, "tiempo", tiempo)
+        self._fijar_tiempo(tiempo)
         if evento.tipo == EVENTO_FIN_VELOCIDAD:
             self._cambiar_velocidad_jugador(self.jugador.velocidad - evento.dato)
             return None
@@ -522,7 +533,6 @@ class EstadoPartida:
         # un muerto no ejecuta nada, aunque su evento llegara hasta aquí
         if enemigo is None or not enemigo.esta_vivo():
             return None
-        self._asignar(enemigo, "proximo_evento", None)
         resultado = None
         if evento.tipo == EVENTO_ACCION:
             if self.jugador.esta_vivo() and enemigo.sala == self.jugador.sala:
@@ -573,13 +583,21 @@ class EstadoPartida:
 
     # -------------------------------------- cambios que se pueden deshacer
 
+    def _fijar_tiempo(self, tiempo):
+        # el reloj cambia en cada evento, pero para deshacer solo importa el valor
+        # que tenía al empezar el intervalo: se anota una vez y no mil
+        intervalo = self.historial.intervalo_actual()
+        if intervalo is not None and intervalo != self._tiempo_anotado_en:
+            self._recordar(self, "tiempo")
+            self._tiempo_anotado_en = intervalo
+        self.tiempo = tiempo
+
     def _asignar(self, objeto, atributo, valor):
         self._recordar(objeto, atributo)
         setattr(objeto, atributo, valor)
 
     def _recordar(self, objeto, atributo):
-        anterior = getattr(objeto, atributo)
-        self.historial.registrar(lambda: setattr(objeto, atributo, anterior))
+        self.historial.registrar_valor(objeto, atributo, getattr(objeto, atributo))
 
     def _suelo_agregar(self, sala, id_objeto):
         lista = self._suelo.buscar(sala)

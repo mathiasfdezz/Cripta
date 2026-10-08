@@ -54,7 +54,10 @@ class AgendaEventos:
 
     def _descartar_cancelados(self):
         # saca de la raíz los eventos cancelados hasta encontrar uno válido o vaciar el heap
-        while not self._heap.esta_vacio() and self._heap.ver_minimo()[2].cancelado:
+        while True:
+            raiz = self._heap.minimo_o_nada()
+            if raiz is None or not raiz[2].cancelado:
+                return
             entrada = self._heap.extraer_minimo()
             entrada[2].en_agenda = False
             self._cancelados_en_heap -= 1
@@ -63,6 +66,11 @@ class AgendaEventos:
     def ver_siguiente(self):
         self._descartar_cancelados()
         return self._heap.ver_minimo()
+
+    def siguiente_o_nada(self):
+        """El siguiente evento válido sin sacarlo, o None si no queda ninguno."""
+        self._descartar_cancelados()
+        return self._heap.minimo_o_nada()
 
     def sacar_siguiente(self):
         self._descartar_cancelados()

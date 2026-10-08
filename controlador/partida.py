@@ -1,3 +1,4 @@
+import gc
 import os
 from datetime import datetime
 
@@ -55,6 +56,7 @@ class ControladorPartida:
         self.estado.iniciar()
         self._actualizar_fichas_en_uso()
         self._avisar(f"Entras a {self.esqueleto.obtener(datos.sala_inicial).nombre}.")
+        self._congelar_lo_cargado()
 
     # ----------------------------------------------------------------- bucle
 
@@ -199,6 +201,13 @@ class ControladorPartida:
         except (ErrorFuenteDatos, KeyError) as error:
             self._avisar(f"No se pudo recuperar una ficha del catálogo: {error}")
 
+    @staticmethod
+    def _congelar_lo_cargado():
+        # mapa, fichas y enemigos viven toda la partida: se le pide al recolector de
+        # basura de Python que deje de revisarlos en cada pasada. No apaga el
+        # recolector; solo evita pausas largas en medio de un ciclo (sección 5.2)
+        gc.freeze()
+
     # --------------------------------------------------------- guardar y cargar
 
     def _ruta_guardado(self, nombre):
@@ -236,6 +245,7 @@ class ControladorPartida:
                                                                comandos)
             self._comandos = comandos
         self._avisar(f"Partida cargada desde {ruta}.")
+        self._congelar_lo_cargado()
 
     # ------------------------------------------------------------- contenido
 
