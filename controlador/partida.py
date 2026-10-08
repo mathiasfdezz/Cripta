@@ -74,10 +74,10 @@ class ControladorPartida:
             if comando.lower() == "salir":
                 break
             va_a_bitacora = comando.split()[0].lower() not in SIN_BITACORA
-            if self._bitacora_partida is not None and va_a_bitacora:
+            ejecutada = self.ejecutar(comando)
+            if self._bitacora_partida is not None and va_a_bitacora and ejecutada:
                 self._bitacora_partida.anotar(comando)
                 self._comandos += 1
-            self.ejecutar(comando)
         self.vista.mostrar_fin(self.estado)
 
     def ejecutar(self, texto):
@@ -85,36 +85,46 @@ class ControladorPartida:
         partes = texto.split()
         orden = partes[0].lower()
         argumento = partes[1] if len(partes) > 1 else None
+        ejecutada = False
         try:
             if orden.upper() in DIRECCIONES or orden == "mover":
                 direccion = orden.upper() if orden != "mover" else (argumento or "").upper()
                 self._mover(direccion)
+                ejecutada = True
             elif orden == "abrir":
                 self.estado.abrir_puerta((argumento or "").upper())
                 self._avisar("Abres la puerta.")
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "atacar":
                 self._avisar_golpe(self.estado.jugador_ataca(argumento))
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "esperar":
                 self.estado.esperar()
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "recoger":
                 ficha = self.estado.recoger(argumento)
                 self._avisar(f"Recoges {ficha.nombre}.")
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "soltar":
                 self._avisar(f"Sueltas {self.estado.soltar().nombre}.")
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "equipar":
                 self._avisar(f"Equipas {self.estado.equipar().nombre}.")
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "usar":
                 self._avisar(f"Usas {self.estado.usar().nombre}.")
                 self._despues_de_actuar()
+                ejecutada = True
             elif orden == "deshacer":
                 self.estado.deshacer()
                 self._avisar("Lees el pergamino: el tiempo retrocede una acción.")
+                ejecutada = True
             elif orden in ("sig", "ant"):
                 inventario = self.estado.jugador.inventario
                 if orden == "sig":
@@ -140,6 +150,7 @@ class ControladorPartida:
             self._avisar(f"No se puede: {error}.")
         self._actualizar_fichas_en_uso()
         self.vista.mostrar_resultado(texto, self._nuevos)
+        return ejecutada
 
     # ---------------------------------------------------------------- acciones
 

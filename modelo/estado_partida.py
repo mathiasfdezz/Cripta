@@ -77,6 +77,7 @@ class EstadoPartida:
         self.acciones = 0
         self.enemigos_derrotados = 0
         self.antorcha_hasta = None
+        self._evento_apagar_antorcha = None
         # si es True, el jugador no puede entrar a una sala cuyo contenido no se conoce
         self.controlar_contenido = False
         self.sala_salida = None
@@ -435,9 +436,15 @@ class EstadoPartida:
                                       Evento(EVENTO_FIN_VELOCIDAD, self.jugador.id,
                                              ficha.modificador_velocidad))
         elif ficha.clase == "antorcha":
+            # Si ya había una antorcha encendida, su evento de apagado deja de
+            # corresponder a la antorcha nueva. Se cancela sin buscarlo en el heap.
+            anterior = self._evento_apagar_antorcha
+            if anterior is not None and anterior.en_agenda and not anterior.cancelado:
+                self.agenda.cancelar(anterior)
             self._asignar(self, "antorcha_hasta", self.tiempo + ficha.duracion)
-            self.agenda.programar(self.antorcha_hasta,
-                                  Evento(EVENTO_APAGAR_ANTORCHA, self.jugador.id))
+            evento = Evento(EVENTO_APAGAR_ANTORCHA, self.jugador.id)
+            self.agenda.programar(self.antorcha_hasta, evento)
+            self._asignar(self, "_evento_apagar_antorcha", evento)
         # antídoto: cancela el veneno activo; el contrato del API no trae veneno todavía
         return ficha
 
@@ -513,8 +520,11 @@ class EstadoPartida:
             self._cambiar_velocidad_jugador(self.jugador.velocidad - evento.dato)
             return None
         if evento.tipo == EVENTO_APAGAR_ANTORCHA:
-            if self.antorcha_hasta is not None and self.antorcha_hasta <= self.tiempo:
+            if (self._evento_apagar_antorcha is evento
+                    and self.antorcha_hasta is not None
+                    and self.antorcha_hasta <= self.tiempo):
                 self._asignar(self, "antorcha_hasta", None)
+                self._asignar(self, "_evento_apagar_antorcha", None)
             return None
         if evento.tipo == EVENTO_REARME_TRAMPA:
             trampa = self._trampas_por_id.buscar(evento.objetivo)

@@ -79,6 +79,30 @@ class PruebasPartida(unittest.TestCase):
         self.assertEqual((estado.jugador.sala, estado.tiempo), (1, 0))
         self.assertTrue(any("No se puede" in m for m in controlador.vista.mensajes))
 
+    def test_comando_invalido_no_se_registra_en_la_bitacora_de_partida(self):
+        controlador = self.nueva()
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, "p.log")
+            bitacora = BitacoraPartida(ruta)
+            bitacora.crear(CabeceraPartida("cripta-01", controlador.datos.version,
+                                           controlador.version_catalogo, 3))
+            pendientes = iter(["volar", "n"])
+            controlador.jugar(lambda: next(pendientes, None), bitacora)
+            _, comandos = BitacoraPartida.leer(ruta)
+        self.assertEqual(comandos, ["n"])
+
+    def test_comandos_de_consulta_no_se_registran(self):
+        controlador = self.nueva()
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, "p.log")
+            bitacora = BitacoraPartida(ruta)
+            bitacora.crear(CabeceraPartida("cripta-01", controlador.datos.version,
+                                           controlador.version_catalogo, 3))
+            pendientes = iter(["inv", "sig", "ant", "ayuda", "esperar"])
+            controlador.jugar(lambda: next(pendientes, None), bitacora)
+            _, comandos = BitacoraPartida.leer(ruta)
+        self.assertEqual(comandos, ["esperar"])
+
     def test_misma_semilla_y_comandos_dan_la_misma_partida(self):
         comandos = ["n", "recoger", "equipar", "atacar e-201", "atacar e-201", "atacar e-202"]
         a = self.jugar(self.nueva(semilla=11), comandos)
