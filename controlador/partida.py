@@ -132,6 +132,8 @@ class ControladorPartida:
                 else:
                     inventario.retroceder()
                 self.vista.mostrar_objeto_actual(inventario.obtener_actual())
+                # mover el cursor cambia sobre qué objeto actúan soltar, equipar y usar
+                ejecutada = True
             elif orden == "inv":
                 criterio = argumento.lower() if argumento else None
                 if criterio is not None and criterio not in CRITERIOS_INVENTARIO:

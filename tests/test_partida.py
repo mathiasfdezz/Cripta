@@ -101,7 +101,23 @@ class PruebasPartida(unittest.TestCase):
             pendientes = iter(["inv", "sig", "ant", "ayuda", "esperar"])
             controlador.jugar(lambda: next(pendientes, None), bitacora)
             _, comandos = BitacoraPartida.leer(ruta)
-        self.assertEqual(comandos, ["esperar"])
+        # sig y ant sí se registran: mueven el cursor del inventario
+        self.assertEqual(comandos, ["sig", "ant", "esperar"])
+
+    def test_el_replay_suelta_el_mismo_objeto_despues_de_mover_el_cursor(self):
+        original = self.nueva()
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, "p.log")
+            bitacora = BitacoraPartida(ruta)
+            bitacora.crear(CabeceraPartida("cripta-01", original.datos.version,
+                                           original.version_catalogo, 3))
+            # antorcha y daga en el inventario; sig deja el cursor en la daga
+            pendientes = iter(["recoger", "n", "recoger", "sig", "soltar"])
+            original.jugar(lambda: next(pendientes, None), bitacora)
+            _, comandos = BitacoraPartida.leer(ruta)
+        repetida = self.jugar(self.nueva(), comandos)
+        self.assertEqual(original.estado.suelo(2), ["itm_daga_oxidada"])
+        self.assertEqual(repetida.suelo(2), original.estado.suelo(2))
 
     def test_misma_semilla_y_comandos_dan_la_misma_partida(self):
         comandos = ["n", "recoger", "equipar", "atacar e-201", "atacar e-201", "atacar e-202"]

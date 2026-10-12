@@ -72,6 +72,17 @@ class PruebasGuardadoPartida(unittest.TestCase):
         self.assertEqual(con_guardado.estado.acciones, directo.estado.acciones)
         self.assertEqual(foto(con_guardado.estado), foto(directo.estado))
 
+    def test_la_antorcha_se_apaga_aunque_se_haya_cargado_la_partida(self):
+        # la antorcha de cripta-01 dura 2000: con 21 esperas ya se apagó
+        esperas = ["esperar"] * 21
+        directo = self.nueva()
+        self.jugar(directo, ["recoger", "usar"] + esperas)
+        con_guardado = self.nueva()
+        self.jugar(con_guardado, ["recoger", "usar", "guardar t", "cargar t"] + esperas)
+        self.assertIsNone(directo.estado.antorcha_hasta)
+        self.assertIsNone(con_guardado.estado.antorcha_hasta)
+        self.assertEqual(foto(con_guardado.estado), foto(directo.estado))
+
     def test_una_puerta_abierta_despues_de_guardar_vuelve_a_cerrarse(self):
         controlador = self.nueva()
         estado = self.jugar(controlador, ["guardar inicio"])

@@ -520,9 +520,9 @@ class EstadoPartida:
             self._cambiar_velocidad_jugador(self.jugador.velocidad - evento.dato)
             return None
         if evento.tipo == EVENTO_APAGAR_ANTORCHA:
-            if (self._evento_apagar_antorcha is evento
-                    and self.antorcha_hasta is not None
-                    and self.antorcha_hasta <= self.tiempo):
+            # se mira la hora y no qué evento es: después de cargar una partida el
+            # evento es otro objeto, y una antorcha nueva ya movió antorcha_hasta
+            if self.antorcha_hasta is not None and self.antorcha_hasta <= self.tiempo:
                 self._asignar(self, "antorcha_hasta", None)
                 self._asignar(self, "_evento_apagar_antorcha", None)
             return None

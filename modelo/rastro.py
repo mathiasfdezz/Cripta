@@ -61,7 +61,7 @@ class Rastro:
             registro.vecinos = []
             sala = self._esqueleto.obtener(id_sala)
             for salida in (() if sala is None else sala.salidas):
-                                # hacia una sala que no está en el mapa no se puede pasar
+                # hacia una sala que no está en el mapa no se puede pasar
                 if self._esqueleto.obtener(salida.sala_destino) is None:
                     continue
                 registro.vecinos.append((salida.direccion,
