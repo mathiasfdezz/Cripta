@@ -34,7 +34,7 @@ class GuardadoPartida:
             jugador.velocidad, cursor, estado.acciones, estado.enemigos_derrotados,
             estado.puerta_salida_abierta, estado.antorcha_hasta,
             estado.agenda.siguiente_secuencia(), estado.azar.getstate(), eventos,
-            ruta_bitacora, comandos)
+            ruta_bitacora, comandos, estado.veneno_hasta, estado.veneno_dano)
         cabecera = DatosCabecera(datos.id, datos.version, version_catalogo, estado.semilla,
                                  estado.tiempo)
         guardar(ruta, cabecera, datos_jugador, GuardadoPartida._salas(estado))
@@ -90,6 +90,8 @@ class GuardadoPartida:
         estado.enemigos_derrotados = guardado.enemigos_derrotados
         estado.puerta_salida_abierta = guardado.salida_abierta
         estado.antorcha_hasta = guardado.antorcha_hasta
+        estado.veneno_hasta = guardado.veneno_hasta
+        estado.veneno_dano = guardado.veneno_dano
         estado.azar.setstate(guardado.azar)
 
         for sala in salas:
@@ -113,9 +115,7 @@ class GuardadoPartida:
         for tiempo, secuencia, tipo, objetivo, dato in guardado.eventos:
             evento = Evento(tipo, objetivo, dato)
             estado.agenda.restaurar(tiempo, secuencia, evento, guardado.siguiente_secuencia)
-            if tipo == "accion":
-                actor = jugador if objetivo == jugador.id else estado.enemigo(objetivo)
-                actor.proximo_evento = evento
+            estado.enlazar_evento_restaurado(evento)
         return estado, guardado.bitacora, guardado.comandos
 
     @staticmethod

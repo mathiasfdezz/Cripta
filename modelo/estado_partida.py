@@ -19,12 +19,21 @@ EVENTO_FIN_VELOCIDAD = "fin_velocidad"
 EVENTO_APAGAR_ANTORCHA = "apagar_antorcha"
 EVENTO_REARME_TRAMPA = "rearme_trampa"
 EVENTO_CERRAR_PUERTA = "cerrar_puerta"
+EVENTO_VENENO = "veneno"
+EVENTO_REGENERAR = "regenerar"
 
 REARME_POR_DEFECTO = 300    # si la ficha de la trampa no trae rearme
+# reglas de la sección 2.10; cuánto daña o cura lo dice la ficha del enemigo
+INTERVALO_VENENO = 80
+DURACION_VENENO = 400
+INTERVALO_REGENERACION = 200
 
 # lo que el controlador puede querer contar después de cada comando
 SUCESO_TRAMPA = "trampa"
 SUCESO_PUERTA_CERRADA = "puerta_cerrada"
+SUCESO_ENVENENADO = "envenenado"
+SUCESO_VENENO = "veneno"
+SUCESO_VENENO_CURADO = "veneno_curado"
 
 # un costo equivale a esa misma cantidad de tiempo a velocidad 100; a más velocidad, menos tiempo
 VELOCIDAD_BASE = 100
@@ -78,6 +87,10 @@ class EstadoPartida:
         self.enemigos_derrotados = 0
         self.antorcha_hasta = None
         self._evento_apagar_antorcha = None
+        # veneno activo sobre el jugador: hasta cuándo dura y cuánto quita cada pulso
+        self.veneno_hasta = None
+        self.veneno_dano = 0
+        self._evento_veneno = None
         # si es True, el jugador no puede entrar a una sala cuyo contenido no se conoce
         self.controlar_contenido = False
         self.sala_salida = None
@@ -161,6 +174,21 @@ class EstadoPartida:
         if cargada:
             self._cargadas.insertar(sala, True)
 
+    def enlazar_evento_restaurado(self, evento):
+        """Al cargar una partida: cada evento vuelve a quedar conectado con quien lo
+        usa, para poder cancelarlo después sin buscarlo en la agenda."""
+        if evento.tipo == EVENTO_ACCION:
+            if evento.objetivo == self.jugador.id:
+                self.jugador.proximo_evento = evento
+            else:
+                self._enemigos.buscar(evento.objetivo).proximo_evento = evento
+        elif evento.tipo == EVENTO_REGENERAR:
+            self._enemigos.buscar(evento.objetivo).evento_regeneracion = evento
+        elif evento.tipo == EVENTO_VENENO:
+            self._evento_veneno = evento
+        elif evento.tipo == EVENTO_APAGAR_ANTORCHA:
+            self._evento_apagar_antorcha = evento
+
     def _agregar_trampas(self, sala, trampas):
         self._trampas.insertar(sala, list(trampas))
         for trampa in trampas:
@@ -192,6 +220,8 @@ class EstadoPartida:
             if not enemigo.activo:
                 self._asignar(enemigo, "activo", True)
                 self.programar_accion(enemigo)
+                if enemigo.regeneracion:
+                    self._programar_regeneracion(enemigo)
                 activados.append(enemigo)
         return activados
 
@@ -199,6 +229,11 @@ class EstadoPartida:
         evento = Evento(EVENTO_ACCION, enemigo.id)
         self.agenda.programar(self.tiempo + duracion_accion(enemigo.velocidad, costo), evento)
         self._asignar(enemigo, "proximo_evento", evento)
+
+    def _programar_regeneracion(self, enemigo):
+        evento = Evento(EVENTO_REGENERAR, enemigo.id)
+        self.agenda.programar(self.tiempo + INTERVALO_REGENERACION, evento)
+        self._asignar(enemigo, "evento_regeneracion", evento)
 
     def enemigo(self, instancia):
         return self._enemigos.buscar(instancia)
@@ -445,7 +480,11 @@ class EstadoPartida:
             evento = Evento(EVENTO_APAGAR_ANTORCHA, self.jugador.id)
             self.agenda.programar(self.antorcha_hasta, evento)
             self._asignar(self, "_evento_apagar_antorcha", evento)
-        # antídoto: cancela el veneno activo; el contrato del API no trae veneno todavía
+        elif ficha.clase == "antidoto" and self._evento_veneno is not None:
+            # se cancela el próximo pulso sin buscarlo: los que venían ya no hacen daño
+            self.agenda.cancelar(self._evento_veneno)
+            self._quitar_veneno()
+            self._sucesos.append((SUCESO_VENENO_CURADO,))
         return ficha
 
     def deshacer(self):
@@ -531,6 +570,9 @@ class EstadoPartida:
             if trampa is not None:
                 self._asignar(trampa, "armada", True)
             return None
+        if evento.tipo == EVENTO_VENENO:
+            self._pulso_de_veneno()
+            return None
         if evento.tipo == EVENTO_CERRAR_PUERTA:
             sala, _, direccion = evento.objetivo.partition(":")
             puerta = self.esqueleto.puerta(int(sala), direccion)
@@ -543,14 +585,54 @@ class EstadoPartida:
         # un muerto no ejecuta nada, aunque su evento llegara hasta aquí
         if enemigo is None or not enemigo.esta_vivo():
             return None
+        if evento.tipo == EVENTO_REGENERAR:
+            if enemigo.vida < enemigo.vida_max:
+                self._asignar(enemigo, "vida",
+                              min(enemigo.vida_max, enemigo.vida + enemigo.regeneracion))
+            self._programar_regeneracion(enemigo)
+            return None
         resultado = None
         if evento.tipo == EVENTO_ACCION:
             if self.jugador.esta_vivo() and enemigo.sala == self.jugador.sala:
                 resultado = self._atacar(enemigo, self.jugador)
+                if enemigo.veneno and self.jugador.esta_vivo():
+                    self._envenenar(enemigo)
             else:
                 self._comportarse(enemigo)
             self.programar_accion(enemigo)
         return resultado
+
+    def _envenenar(self, enemigo):
+        # un veneno nuevo reemplaza al anterior y vuelve a durar 400 desde ahora
+        if self._evento_veneno is not None:
+            self.agenda.cancelar(self._evento_veneno)
+        self._asignar(self, "veneno_dano", enemigo.veneno)
+        self._asignar(self, "veneno_hasta", self.tiempo + DURACION_VENENO)
+        self._programar_pulso_de_veneno()
+        self._sucesos.append((SUCESO_ENVENENADO, enemigo.nombre, enemigo.veneno))
+
+    def _programar_pulso_de_veneno(self):
+        evento = Evento(EVENTO_VENENO, self.jugador.id)
+        self.agenda.programar(self.tiempo + INTERVALO_VENENO, evento)
+        self._asignar(self, "_evento_veneno", evento)
+
+    def _pulso_de_veneno(self):
+        if self.veneno_hasta is None or not self.jugador.esta_vivo():
+            return
+        self._recordar(self.jugador, "vida")
+        self.jugador.recibir_dano(self.veneno_dano)
+        self._sucesos.append((SUCESO_VENENO, self.veneno_dano))
+        if not self.jugador.esta_vivo():
+            self._morir(self.jugador)
+        elif self.tiempo + INTERVALO_VENENO <= self.veneno_hasta:
+            self._programar_pulso_de_veneno()
+        else:
+            self._quitar_veneno()
+
+    def _quitar_veneno(self):
+        self._asignar(self, "veneno_hasta", None)
+        self._asignar(self, "veneno_dano", 0)
+        self._asignar(self, "_evento_veneno", None)
 
     def _comportarse(self, enemigo):
         """Lo que hace un enemigo que no comparte sala con el jugador. Moverse o
@@ -580,10 +662,16 @@ class EstadoPartida:
             self.agenda.cancelar(actor.proximo_evento)
             self._asignar(actor, "proximo_evento", None)
         if isinstance(actor, Enemigo):
+            if actor.evento_regeneracion is not None:
+                self.agenda.cancelar(actor.evento_regeneracion)
+                self._asignar(actor, "evento_regeneracion", None)
             self._asignar(self, "enemigos_derrotados", self.enemigos_derrotados + 1)
             for id_objeto in actor.suelta:
                 self._suelo_agregar(actor.sala, id_objeto)
         else:
+            if self._evento_veneno is not None:
+                self.agenda.cancelar(self._evento_veneno)
+                self._quitar_veneno()
             self._asignar(self, "resultado", DERROTA)
 
     def _cancelar_turno_jugador(self):

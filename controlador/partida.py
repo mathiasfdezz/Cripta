@@ -11,7 +11,8 @@ from controlador.uso_de_fichas import UsoDeFichas
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.bitacora import Bitacora
 from modelo.esqueleto import Esqueleto
-from modelo.estado_partida import (DERROTA, SUCESO_PUERTA_CERRADA, SUCESO_TRAMPA, VICTORIA,
+from modelo.estado_partida import (DERROTA, SUCESO_ENVENENADO, SUCESO_PUERTA_CERRADA,
+                                   SUCESO_TRAMPA, SUCESO_VENENO, SUCESO_VENENO_CURADO, VICTORIA,
                                    EstadoPartida)
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
@@ -189,6 +190,12 @@ class ControladorPartida:
                 self._avisar(f"¡Trampa! {suceso[1]} te hace {suceso[2]} de daño.")
             elif suceso[0] == SUCESO_PUERTA_CERRADA:
                 self._avisar(f"La puerta {suceso[2]} de la sala {suceso[1]} se cerró sola.")
+            elif suceso[0] == SUCESO_ENVENENADO:
+                self._avisar(f"{suceso[1]} te envenena: pierdes {suceso[2]} cada 80 unidades.")
+            elif suceso[0] == SUCESO_VENENO:
+                self._avisar(f"El veneno te hace {suceso[1]} de daño.")
+            elif suceso[0] == SUCESO_VENENO_CURADO:
+                self._avisar("El antídoto cura el veneno.")
 
     def _avisar_golpe(self, golpe):
         if golpe.atacante is self.estado.jugador:

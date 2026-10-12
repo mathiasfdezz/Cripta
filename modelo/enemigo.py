@@ -24,5 +24,8 @@ class Enemigo(Actor):
         # guardián / errante / rastreador: lo usa EstadoPartida._comportarse
         self.comportamiento = ficha.comportamiento
         self.suelta = tuple(ficha.suelta)   # ids de catálogo que deja al morir
+        self.veneno = ficha.veneno
+        self.regeneracion = ficha.regeneracion
+        self.evento_regeneracion = None
         # no actúa hasta que el jugador entra a su sala; una vez activo sigue activo
         self.activo = False

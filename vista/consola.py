@@ -73,6 +73,8 @@ class Consola:
         efectos = []
         if estado.antorcha_hasta is not None:
             efectos.append(f"antorcha encendida hasta t={estado.antorcha_hasta}")
+        if estado.veneno_hasta is not None:
+            efectos.append(f"envenenado ({estado.veneno_dano} cada 80) hasta t={estado.veneno_hasta}")
         print(f"Tú:       vida {jugador.vida}/{jugador.vida_max}  ataque {jugador.ataque_efectivo()}"
               f"  defensa {jugador.defensa_efectiva()}  velocidad {jugador.velocidad}"
               + (f"  | {', '.join(efectos)}" if efectos else ""))

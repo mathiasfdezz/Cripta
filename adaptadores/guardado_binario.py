@@ -4,9 +4,9 @@ import zlib
 from estructuras.ordenamientos import ordenar
 
 MAGIC = b"CRPT"
-VERSION_FORMATO = 2
+VERSION_FORMATO = 3
 VIDA_DEL_CATALOGO = -1
-NINGUNO = -1   # rastro, antorcha o cursor que no existen
+NINGUNO = -1   # rastro, antorcha, veneno o cursor que no existen
 
 _PREFIJO = struct.Struct("<4sHqqIQQ")
 _ENTRADA_INDICE = struct.Struct("<iQI")
@@ -50,11 +50,13 @@ class DatosJugador(_Datos):
     pendiente y estado del azar, para que al cargar se siga exactamente igual."""
     _campos = ("vida", "sala", "tiempo_siguiente", "inventario", "velocidad", "cursor",
                "acciones", "enemigos_derrotados", "salida_abierta", "antorcha_hasta",
-               "siguiente_secuencia", "azar", "eventos", "bitacora", "comandos")
+               "siguiente_secuencia", "azar", "eventos", "bitacora", "comandos",
+               "veneno_hasta", "veneno_dano")
 
     def __init__(self, vida, sala, tiempo_siguiente, inventario, velocidad=100, cursor=NINGUNO,
                  acciones=0, enemigos_derrotados=0, salida_abierta=False, antorcha_hasta=None,
-                 siguiente_secuencia=1, azar=None, eventos=(), bitacora="", comandos=0):
+                 siguiente_secuencia=1, azar=None, eventos=(), bitacora="", comandos=0,
+                 veneno_hasta=None, veneno_dano=0):
         self.vida = vida
         self.sala = sala
         self.tiempo_siguiente = tiempo_siguiente
@@ -70,6 +72,8 @@ class DatosJugador(_Datos):
         self.eventos = list(eventos)        # [(tiempo, secuencia, tipo, objetivo, dato)]
         self.bitacora = bitacora            # bitácora de la partida y cuántos comandos
         self.comandos = comandos            # tenía al guardar, para que el replay siga
+        self.veneno_hasta = veneno_hasta
+        self.veneno_dano = veneno_dano
 
 
 class DatosSala(_Datos):
@@ -149,6 +153,7 @@ def _empaquetar_jugador(j):
         partes.append(struct.pack("<qq", tiempo, secuencia) + _cadena(tipo) + _cadena(objetivo)
                       + struct.pack("<Bq", 0 if dato is None else 1, 0 if dato is None else dato))
     partes.append(_cadena(j.bitacora) + struct.pack("<I", j.comandos))
+    partes.append(struct.pack("<qi", _opcional(j.veneno_hasta), j.veneno_dano))
     return _con_crc(b"".join(partes))
 
 
@@ -179,9 +184,12 @@ def _desempaquetar_jugador(registro):
         eventos.append((tiempo_evento, secuencia_evento, tipo, objetivo, dato if hay_dato else None))
     bitacora, pos = _leer_cadena(datos, pos)
     (comandos,) = struct.unpack_from("<I", datos, pos)
+    pos += 4
+    veneno_hasta, veneno_dano = struct.unpack_from("<qi", datos, pos)
     return DatosJugador(vida, sala, tiempo, inventario, velocidad, cursor, acciones, enemigos,
                         bool(salida_abierta), None if antorcha == NINGUNO else antorcha,
-                        secuencia, azar, eventos, bitacora, comandos)
+                        secuencia, azar, eventos, bitacora, comandos,
+                        None if veneno_hasta == NINGUNO else veneno_hasta, veneno_dano)
 
 
 def _empaquetar_sala(s):

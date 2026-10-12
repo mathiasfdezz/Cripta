@@ -13,6 +13,9 @@ class FichaCatalogo:
     velocidad: int | None = None
     comportamiento: str | None = None
     suelta: tuple = ()
+    # efectos que el contrato del API todavía no trae: si la ficha no los declara, no pasan
+    veneno: int | None = None          # daño por pulso al jugador que golpea
+    regeneracion: int | None = None    # vida que recupera en cada pulso
     # objetos
     peso: int | None = None
     valor: int | None = None

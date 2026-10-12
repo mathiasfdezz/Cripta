@@ -34,6 +34,8 @@ def ficha_catalogo_desde_json(datos):
         velocidad=datos.get("velocidad"),
         comportamiento=datos.get("comportamiento"),
         suelta=tuple(datos.get("suelta") or ()),
+        veneno=datos.get("veneno"),
+        regeneracion=datos.get("regeneracion"),
         peso=datos.get("peso"),
         valor=datos.get("valor"),
         ataque_bonus=datos.get("ataque_bonus"),
