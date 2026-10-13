@@ -548,13 +548,13 @@ El ciclo es `avanzar_hasta_turno_jugador`: saca eventos hasta que el siguiente e
 | 100 salas, 100 enemigos | 1,11 | 2,15 | 4,18 | 121 | sí |
 | 400 salas, 400 enemigos | 5,19 | 9,85 | 14,69 | 483 | sí |
 | 625 salas, 600 enemigos | 8,28 | 12,70 | 27,88 | 724 | en el 95 % de los ciclos |
-| 900 salas, 900 enemigos | 13,24 | 19,94 | 41,49 | 1086 | en el 95 % de los ciclos |
+| 900 salas, 900 enemigos | 13,24 | 19,94 | 41,49 | 1086 | depende de la corrida (el p95 queda cerca de 20) |
 
 Con la cripta de referencia el ciclo tarda 0,03 ms, unas 600 veces por debajo del límite. Con 400 enemigos activos a la vez cumple incluso en el peor ciclo.
 
 ### Límites conocidos
 
-El costo es de unos 11 a 12 µs por evento, así que en el peor caso el límite se alcanza alrededor de los 500 eventos por ciclo (unos 400 enemigos activos a la vez). Con 600 o 900 el promedio sigue por debajo de 20 ms, pero algunos ciclos se pasan. Probamos apagando el recolector por completo y los picos seguían apareciendo, así que una parte viene del sistema operativo y no de nuestro código.
+El costo es de unos 11 a 12 µs por evento, así que en el peor caso el límite se alcanza alrededor de los 500 eventos por ciclo (unos 400 enemigos activos a la vez). Con 600 o 900 el promedio sigue por debajo de 20 ms, pero algunos ciclos se pasan. Con 900 el p95 queda justo en el borde: en esta corrida dio 19,94 ms y en otra dio 23,41 ms, así que al repetir el bench puede salir "NO" en esa fila. Probamos apagando el recolector por completo y los picos seguían apareciendo, así que una parte viene del sistema operativo y no de nuestro código.
 
 La mejora siguiente sería no programar acciones para los enemigos que no tienen nada que hacer (un guardián lejos del jugador, por ejemplo) y despertarlos solo cuando el jugador se acerca. No la implementamos: cambia cuándo actúa cada enemigo y habría que revisar el determinismo y el retroceso con calma. Queda como trabajo futuro.
 

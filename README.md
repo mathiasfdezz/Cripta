@@ -52,7 +52,7 @@ python -m unittest
 python main.py --bench
 ```
 
-Tarda unos 15 segundos y no usa la red. Mide la agenda (heap contra lista), la busqueda en la cache (vector ordenado contra arbol binario), la recuperacion de fichas liberadas, el inventario, el historial de retroceso, los ordenamientos y su umbral, el guardado binario contra JSON y el ciclo completo entre dos decisiones del jugador (limite de 20 ms). La fila de `cripta-01` necesita `datos_offline/`.
+Tarda unos 15 segundos y no usa la red. Mide la agenda (heap contra lista), la busqueda en la cache (vector ordenado contra arbol binario), la recuperacion de fichas liberadas, el inventario, el historial de retroceso, los ordenamientos y su umbral, el guardado binario contra JSON y el ciclo completo entre dos decisiones del jugador (limite de 20 ms). La fila de la cripta de referencia (la primera del paquete offline) necesita datos_offline/.
 
 ## Estructura del proyecto
 
