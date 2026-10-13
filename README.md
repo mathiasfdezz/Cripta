@@ -68,4 +68,4 @@ Tarda unos 15 segundos y no usa la red. Mide la agenda (heap contra lista), la b
 ## Documentacion
 
 - `docs/decisiones.md`: Documento de Decisiones de Diseno.
-- Bitacora de prompts: documento de Word del grupo.
+- `docs/bitacora_prompts.pdf`: bitacora de prompts enviados a LLMs (herramienta, prompt y uso de cada respuesta).
