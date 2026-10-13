@@ -10,10 +10,10 @@ Juego de mazmorra por consola para el proyecto de Estructuras de Datos II.
 ## Ejecutar
 
 ```bash
-python main.py cripta-01
+python main.py
 ```
 
-El primer argumento es el id de la cripta (por defecto `cripta-01`). Cambiándolo se juega otra cripta del API.
+Sin argumentos muestra las criptas disponibles y pide elegir una (por número o por id). También se puede indicar directamente: `python main.py cripta-01`.
 
 Banderas:
 

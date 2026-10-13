@@ -37,7 +37,8 @@ def _positivo(texto):
 
 def leer_argumentos(argv=None):
     parser = argparse.ArgumentParser(description="Cripta")
-    parser.add_argument("cripta", nargs="?", default="cripta-01", help="id de la cripta")
+    parser.add_argument("cripta", nargs="?",
+                        help="id de la cripta; si no se indica, se elige de la lista")
     parser.add_argument("--offline", action="store_true",
                         help="leer los datos de datos_offline/ en vez del API")
     parser.add_argument("--cache-size", type=_positivo, default=25,
@@ -63,7 +64,7 @@ def preparar_cache(fuente, version_catalogo, tamano):
     return cache
 
 
-def jugar(cripta_id, fuente, tamano_cache, semilla):
+def jugar(cripta_id, fuente, tamano_cache, semilla, vista):
     datos = fuente.datos_cripta(cripta_id)
     fuente.fijar_presupuesto(datos.presupuesto_solicitudes)
     version_catalogo = fuente.version_catalogo()
@@ -71,7 +72,6 @@ def jugar(cripta_id, fuente, tamano_cache, semilla):
     if semilla is None:
         semilla = secrets.randbelow(10 ** 9)
 
-    vista = Consola()
     controlador = ControladorPartida(datos, fuente, cache, vista, semilla, version_catalogo,
                                      CARPETA_PARTIDAS)
     ruta = os.path.join(CARPETA_PARTIDAS, f"partida-{datetime.now():%Y%m%d-%H%M%S}.log")
@@ -130,7 +130,13 @@ def principal(argv=None):
     try:
         if args.replay:
             return reproducir(args.replay, fuente, args.cache_size)
-        return jugar(args.cripta, fuente, args.cache_size, args.semilla)
+        vista = Consola()
+        # ninguna cripta queda escrita en el código: si no se indica, se elige de la lista
+        cripta_id = args.cripta or vista.elegir_cripta(fuente.listar_criptas())
+        if cripta_id is None:
+            print("No se eligió ninguna cripta.")
+            return 1
+        return jugar(cripta_id, fuente, args.cache_size, args.semilla, vista)
     except ErrorPresupuesto as error:
         print(f"[PRESUPUESTO] {error}")
     except ErrorFuenteDatos as error:

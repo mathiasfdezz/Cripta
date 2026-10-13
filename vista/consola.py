@@ -20,26 +20,30 @@ Comandos:
 
 class Consola:
 
-    def mostrar_mensaje(self, texto):
-        print(texto)
+    def elegir_cripta(self, criptas):
+        """Muestra las criptas disponibles y devuelve el id elegido (None si no hay o se cancela)."""
+        if not criptas:
+            print("No hay criptas disponibles.")
+            return None
+        print("\nCriptas disponibles:")
+        for numero, cripta in enumerate(criptas, 1):
+            print(f"  {numero}. {cripta.nombre} ({cripta.id}): {cripta.salas} salas,"
+                  f" dificultad {cripta.dificultad}")
+        while True:
+            try:
+                texto = input("Elige una cripta (número o id): ").strip()
+            except EOFError:
+                return None
+            for numero, cripta in enumerate(criptas, 1):
+                if texto in (str(numero), cripta.id):
+                    return cripta.id
+            print("Esa cripta no está en la lista.")
 
     def mostrar_objeto_actual(self, objeto):
         if objeto is None:
             print("No hay objeto seleccionado.")
             return
         print(f"Objeto actual: {objeto.nombre} | Peso: {objeto.peso} | Valor: {objeto.valor}")
-
-    def mostrar_objeto_soltado(self, objeto):
-        if objeto is None:
-            print("No hay objeto para soltar.")
-            return
-        print(f"Objeto soltado: {objeto.nombre}")
-
-    def mostrar_objeto_equipado(self, objeto):
-        if objeto is None:
-            print("No hay objeto para equipar.")
-            return
-        print(f"Objeto equipado: {objeto.nombre}")
 
     def mostrar_inventario_detallado(self, pares):
         print("\n--- Inventario ---")

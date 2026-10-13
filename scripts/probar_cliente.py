@@ -1,5 +1,5 @@
 # prueba manual contra el API real, gasta solicitudes
-# uso (desde la carpeta cripta): python -m scripts.probar_cliente [cripta_id]
+# uso (desde la carpeta cripta): python -m scripts.probar_cliente <cripta_id>
 import sys
 
 from adaptadores.cliente_red import ClienteRed
@@ -14,7 +14,10 @@ def avisar_espera(operacion, segundos, intento):
 
 
 def principal():
-    cripta_id = sys.argv[1] if len(sys.argv) > 1 else "cripta-01"
+    if len(sys.argv) < 2:
+        print("uso: python -m scripts.probar_cliente <cripta_id>")
+        return
+    cripta_id = sys.argv[1]
     cliente = ClienteRed(ConexionApi(al_esperar=avisar_espera))
     presupuesto = "?"
     print(f"Client ID: {cliente.client_id}")

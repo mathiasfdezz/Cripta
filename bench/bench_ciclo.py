@@ -72,14 +72,15 @@ def principal():
 
     if os.path.isdir("datos_offline"):
         fuente = ClienteOffline()
-        datos = fuente.datos_cripta("cripta-01")
+        # la cripta de referencia es la primera del paquete offline
+        datos = fuente.datos_cripta(fuente.listar_criptas()[0].id)
         cache = CacheCatalogo(fuente, AlmacenCatalogoDisco("cache_catalogo"))
         cache.validar_version(fuente.version_catalogo())
         controlador = ControladorPartida(datos, fuente, cache, _VistaNula(), 1)
         # que no termine durante la medición
         controlador.estado.jugador.vida = 10 ** 9
-        _fila("cripta-01 (controlador)", _medir(lambda: controlador.ejecutar("esperar"),
-                                                controlador.estado))
+        _fila(f"{datos.id} (controlador)", _medir(lambda: controlador.ejecutar("esperar"),
+                                                  controlador.estado))
 
     for filas, columnas, enemigos in ((10, 10, 100), (20, 20, 400), (25, 25, 600),
                                       (30, 30, 900)):
