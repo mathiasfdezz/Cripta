@@ -31,6 +31,8 @@ Escribe `ayuda` dentro del juego para ver la lista. Los principales:
 `inv [peso|valor|nombre]`, `deshacer` (pergamino de retroceso),
 `guardar [nombre]`, `cargar [nombre]` y `salir`.
 
+Atajos: `norte`/`sur`/`este`/`oeste`, `abrir este`, `i` (inventario), `z` (esperar), `?` (ayuda) y `q` (salir). Los enemigos y los objetos del suelo aparecen numerados en la pantalla de la sala, así que se puede escribir `atacar 1` o `recoger 2` en vez del id. La bitácora de la partida guarda siempre el comando completo (con el id), por eso `--replay` no depende de la pantalla.
+
 ## Archivos generados
 
 - `datos_offline/`: respuestas del API guardadas para `--offline`. Para regenerarlas (gasta solicitudes): `python -m scripts.descargar_offline`
