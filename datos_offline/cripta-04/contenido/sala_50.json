@@ -1,0 +1,9 @@
+{
+  "sala": 50,
+  "enemigos": [],
+  "objetos": [
+    "itm_pergamino_retroceso",
+    "itm_antidoto"
+  ],
+  "trampas": []
+}

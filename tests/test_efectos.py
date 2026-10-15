@@ -5,6 +5,7 @@ import unittest
 
 from adaptadores.almacen_catalogo import AlmacenCatalogoDisco
 from adaptadores.cliente_offline import ClienteOffline
+from adaptadores.mapeadores.error_datos import ErrorDatos
 from adaptadores.mapeadores.mapeador_catalogo import ficha_catalogo_desde_json
 from adaptadores.rutas_offline import RutasOffline
 from controlador.partida import ControladorPartida
@@ -148,6 +149,20 @@ class PruebasFichaConEfectos(unittest.TestCase):
         del datos["veneno"], datos["regeneracion"]
         ficha_x = ficha_catalogo_desde_json(datos)
         self.assertEqual((ficha_x.veneno, ficha_x.regeneracion), (None, None))
+
+    def test_el_efecto_tambien_puede_venir_como_objeto(self):
+        datos = {"id": "ent_x", "nombre": "X", "clase": "enemigo", "vida_max": 5, "ataque": 1,
+                 "defensa": 0, "velocidad": 100, "comportamiento": "guardián",
+                 "veneno": {"daño": 2, "cada": 80}, "regeneracion": {"cantidad": 3}}
+        ficha_x = ficha_catalogo_desde_json(datos)
+        self.assertEqual((ficha_x.veneno, ficha_x.regeneracion), (2, 3))
+
+    def test_un_formato_que_no_se_entiende_es_error_de_datos_y_no_caida(self):
+        base = {"id": "ent_x", "nombre": "X", "clase": "enemigo", "vida_max": 5, "ataque": 1,
+                "defensa": 0, "velocidad": 100, "comportamiento": "guardián"}
+        for raro in ("2", -1, True, [1], {"a": 1, "b": 2}):
+            with self.assertRaises(ErrorDatos):
+                ficha_catalogo_desde_json({**base, "veneno": raro})
 
 
 class PruebasEfectosAlGuardar(unittest.TestCase):

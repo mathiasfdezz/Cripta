@@ -5,6 +5,7 @@ from datetime import datetime
 from adaptadores.bitacora_partida import BitacoraPartida
 from adaptadores.cabecera_partida import CabeceraPartida
 from adaptadores.error_fuente_datos import ErrorFuenteDatos
+from adaptadores.error_presupuesto import ErrorPresupuesto
 from adaptadores.guardado_binario import GuardadoIncompatible, GuardadoInvalido
 from adaptadores.guardado_partida import GuardadoPartida
 from controlador.uso_de_fichas import UsoDeFichas
@@ -44,6 +45,7 @@ class ControladorPartida:
         self.estado = None
         self._pedidas = VectorOrdenado()   # salas cuyo contenido ya se pidió
         self._nuevos = []
+        self._avisado_sin_presupuesto = False
         self._uso = UsoDeFichas(cache)
         self.esqueleto = self._cargar_esqueleto()
         jugador = Jugador(datos.sala_inicial, datos.jugador, Inventario(datos.inventario_max))
@@ -301,6 +303,13 @@ class ControladorPartida:
                 soltados.extend(ficha.suelta)
             if soltados:
                 self.cache.resolver(soltados)
+        except ErrorPresupuesto:
+            # se sigue intentando (lo que ya está en disco no gasta), pero se avisa una vez
+            if not self._avisado_sin_presupuesto:
+                self._avisado_sin_presupuesto = True
+                self._avisar("Se acabó el presupuesto de solicitudes: las salas que no se "
+                             "trajeron antes no se pueden visitar.")
+            return
         except (ErrorFuenteDatos, KeyError) as error:
             self._avisar(f"No se pudo traer el contenido de las salas {lote}: {error}")
             return

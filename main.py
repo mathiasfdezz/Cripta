@@ -8,7 +8,7 @@ from adaptadores.almacen_catalogo import AlmacenCatalogoDisco
 from adaptadores.bitacora_partida import BitacoraPartida
 from adaptadores.cabecera_partida import CabeceraPartida
 from adaptadores.cliente_offline import ClienteOffline
-from adaptadores.cliente_red import ClienteRed
+from adaptadores.cliente_red_con_copia import ClienteRedConCopia
 from adaptadores.conexion_api import ConexionApi
 from adaptadores.error_bitacora import ErrorBitacora
 from adaptadores.error_fuente_datos import ErrorFuenteDatos
@@ -20,6 +20,7 @@ from vista.consola import Consola
 from vista.vista_replay import VistaReplay
 
 CARPETA_CACHE = "cache_catalogo"
+CARPETA_CRIPTAS = "cache_criptas"
 CARPETA_PARTIDAS = "partidas"
 ARCHIVO_PUNTAJES = "puntajes.txt"
 
@@ -55,7 +56,8 @@ def leer_argumentos(argv=None):
 def crear_fuente(offline):
     if offline:
         return ClienteOffline()
-    return ClienteRed(ConexionApi(al_esperar=avisar_espera))
+    # esqueleto y contenido quedan en disco para la próxima partida de la misma versión
+    return ClienteRedConCopia(ConexionApi(al_esperar=avisar_espera), CARPETA_CRIPTAS)
 
 
 def preparar_cache(fuente, version_catalogo, tamano):

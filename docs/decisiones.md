@@ -100,11 +100,22 @@ El BFS visita cada sala y cada salida a lo sumo una vez: O(salas + salidas) en e
 | Una sala por solicitud, al entrar | 6 |
 | BFS con lotes de 10 (la nuestra) | 1 |
 
-La partida completa de cripta-01 usó 6 de las 9 solicitudes del presupuesto: datos de la cripta, versión del catálogo, una página de salas, un lote de contenido y dos lotes de catálogo. Con la caché de disco ya llena, la segunda partida usó 4.
+La partida completa de cripta-01 usó 6 de las 9 solicitudes del presupuesto: datos de la cripta, versión del catálogo, una página de salas, un lote de contenido y dos lotes de catálogo. Con las fichas, el esqueleto y el contenido ya guardados en disco (sección 4.4), la segunda partida usó **2**: los datos de la cripta y la versión del catálogo.
+
+También jugamos contra el API las otras criptas publicadas:
+
+| Cripta | Salas | Presupuesto | Solicitudes al arrancar | Solicitudes en una partida |
+|---|---|---|---|---|
+| cripta-01 | 6 | 9 | 6 | 6 |
+| cripta-02 | 20 | 23 | 5 | 7 |
+| cripta-03 | 40 | 42 | 5 | 7 |
+| cripta-04 | 50 | 52 | 5 | 7 |
 
 ### Límites conocidos
 
 Si todas las salas cercanas ya se pidieron, el BFS puede recorrer buena parte del mapa antes de encontrar 10 nuevas. Y una decisión nuestra que tiene su costo: no hicimos solicitudes en segundo plano: la primera vez que se entra a una zona nueva sin precargar todavía hay una espera de red. En la práctica esto pasa muy poco, porque la precarga corre después de cada acción y se adelanta al jugador.
+
+Al arrancar se resuelven las fichas de todo el primer lote, no solo las de la sala inicial. En una cripta sintética de 150 salas y 28 tipos eso son 10 solicitudes antes de la primera acción, cuando el mínimo posible sería 7. Lo dejamos así a propósito: esas fichas se iban a pedir igual unas salas después, así que no cambia el total de la partida, y en las cuatro criptas publicadas el arranque ya usa el mínimo (5) salvo cripta-01 (6). Solo importaría con una cripta muy grande y un presupuesto casi igual al número de páginas.
 
 ---
 
@@ -180,6 +191,8 @@ Para las fichas en uso, cada entrada lleva un **contador de referencias**. Despu
 
 En disco, `AlmacenCatalogoDisco` guarda un archivo por ficha y la versión del catálogo. Al empezar se compara esa versión con la del servidor (una sola solicitud). Si cambió, se borra lo persistido. Si coincide, todo lo de disco sigue valiendo.
 
+El esqueleto y el contenido de cada cripta también se guardan (`ClienteRedConCopia`, en `cache_criptas/`), con la misma organización de archivos que el paquete `--offline`: una página por archivo y un archivo por sala. Se validan con la versión de la cripta, que viene en los datos generales que igual hay que pedir al empezar, así que validar no cuesta una solicitud extra. Si la versión cambió, se borra la copia de esa cripta. Si un archivo está dañado, cuenta como si no estuviera y se vuelve a pedir. Cuando un lote mezcla salas guardadas y nuevas, solo se piden las nuevas.
+
 Elegimos LRU porque el jugador avanza de sala en sala: las fichas de las salas que deja atrás dejan de usarse, y esas son justo las que conviene liberar.
 
 ### Análisis de complejidad
@@ -197,17 +210,23 @@ Elegimos LRU porque el jugador avanza de sala en sala: las fichas de las salas q
 |---|---|
 | Consulta con acierto (en memoria) | 2,78 µs |
 | Consulta con fallo (desaloja y pide) | 11,88 µs |
-| Recuperar una ficha liberada desde disco | 1840 µs |
+| Recuperar una ficha liberada desde disco | entre 1 840 y 7 550 µs según la corrida |
 | Solicitudes de red al recuperar 100 fichas liberadas | 0 |
 | Una solicitud de red (enunciado, sección 3.4) | unos 400 000 µs |
 
-Leer de disco salió más lento de lo que esperábamos (1,8 ms), porque el proyecto está en una carpeta de OneDrive. Aun así es unas 200 veces más barato que una solicitud de red y no gasta presupuesto. En la segunda partida de cripta-01 las 11 fichas salieron de disco y las solicitudes de catálogo bajaron de 2 a 0.
+Leer de disco salió más lento de lo que esperábamos (de 1,8 a 7,5 ms), porque cada ficha es un archivo y el sistema operativo y el antivirus revisan cada apertura. Aun así es entre 50 y 200 veces más barato que una solicitud de red y no gasta presupuesto.
+
+| Partida de cripta-02 contra el API | Solicitudes |
+|---|---|
+| Primera (todo en frío) | 5 |
+| Segunda, con fichas, esqueleto y contenido en disco | **2** |
+| `--replay` de esa partida | 2 |
 
 ### Límites conocidos
 
 - Si hay más fichas en uso que el tope (muchos tipos de enemigos activos a la vez), la caché pasa el tope temporalmente. Lo preferimos a romper la regla de no liberar fichas en uso.
 - El tiempo de recuperación depende del disco.
-- El esqueleto y el contenido de la cripta no los persistimos entre partidas en modo en línea. Solo existen en disco en el paquete de `--offline`.
+- Un archivo por ficha y por sala es simple y permite armar cualquier lote, pero con miles de salas serían miles de archivos pequeños. Para eso convendría un archivo único con índice, como el del guardado (sección 4.10).
 
 ---
 
@@ -316,7 +335,7 @@ El rastreador sigue el rastro más fresco de las salas vecinas por las que puede
 
 ### Decisión
 
-`Rastro` (`modelo/rastro.py`) guarda, en un `VectorOrdenado`, un registro por sala con la última vez que el jugador estuvo ahí. La primera vez que se consulta una sala se **enlazan sus vecinas**: cada registro guarda su lista de `(dirección, puerta, registro_vecino)`. Desde ahí, decidir solo recorre esa lista, sin búsquedas.
+`Rastro` (`modelo/rastro.py`) guarda, en un `VectorOrdenado`, un registro por sala con la última vez que el jugador estuvo ahí. La primera vez que se consulta una sala se **enlazan sus vecinas**: cada registro guarda su lista de `(dirección, puerta, registro_vecino)`. Desde ahí, decidir es una búsqueda binaria para encontrar el registro de la sala y un recorrido por esa lista.
 
 La caducidad **se detecta al consultar**: si `ahora - tiempo >= 400`, ese vecino no cuenta. No se borra nada. Comparar cuesta una resta, mientras que borrar activamente costaría eventos.
 
@@ -324,11 +343,21 @@ El rastro se refresca en cada acción del jugador (no solo al moverse), y cada r
 
 ### Análisis de complejidad
 
-Decidir cuesta O(salidas de la sala) una vez enlazada la vecindad. Enlazarla la primera vez cuesta O(salidas · log n), y eso pasa una sola vez por sala en toda la partida. Con k rastreadores que actúan, el trabajo por ciclo es O(k · salidas), lineal en los enemigos que realmente actúan.
+Decidir cuesta O(log n + salidas): la búsqueda binaria del registro de la sala y luego solo sus salidas (a lo sumo 4). No depende del recorrido del jugador. Enlazar la vecindad la primera vez puede costar O(salidas · n), porque los registros nuevos se insertan en el vector ordenado y eso desplaza elementos, pero pasa una sola vez por sala en toda la partida. Con k rastreadores que actúan, el trabajo por ciclo es O(k · (log n + salidas)), lineal en los enemigos que realmente actúan.
 
 ### Evidencia empírica
 
-No hicimos un bench aislado del rastro, pero el bench del ciclo (sección 5.2) lo mide dentro del motor: un tercio de los enemigos sintéticos son rastreadores. El costo por evento casi no cambia al multiplicar los enemigos por 9:
+Medimos directamente la alternativa descartada (`bench/bench_rastro.py` y `bench/rastreo_por_bfs.py`): el jugador camina al azar 300 pasos por una cuadrícula y después se mide la decisión de un rastreador desde salas al azar. En microsegundos por decisión:
+
+| Salas | Primera vez en la sala | Sala ya vista | BFS por la cripta | BFS / sala ya vista |
+|---|---|---|---|---|
+| 100 | 15,62 | 1,29 | 1 328,65 | 1 027 veces |
+| 900 | 43,83 | 1,81 | 38 396,88 | 21 223 veces |
+| 2 500 | 110,75 | 2,33 | 231 028,93 | 99 156 veces |
+
+Con 25 veces más salas, la decisión normal pasa de 1,3 a 2,3 µs (es la búsqueda binaria, O(log n)), mientras que el BFS crece con el mapa entero. La columna "primera vez" sí crece, porque incluye enlazar la vecindad; eso pasa una vez por sala en toda la partida.
+
+El bench del ciclo (sección 5.2) también lo mide dentro del motor, donde un tercio de los enemigos sintéticos son rastreadores. El costo por evento casi no cambia al multiplicar los enemigos por 9:
 
 | Enemigos | Eventos por ciclo | µs por evento |
 |---|---|---|
@@ -365,7 +394,17 @@ Agregar es O(1) y la memoria es siempre de 20 casillas. Mostrar los mensajes es 
 
 ### Evidencia empírica
 
-No la medimos con el bench. Con 20 mensajes cualquier opción es rápida, y aquí lo que exige el enunciado es la forma (memoria constante y sin desplazar), que se cumple por construcción. La prueba `test_fila_sobrescribe_mas_antiguo` (en `tests/test_estructuras.py`) revisa que al pasar de la capacidad se pierda el más viejo y que el orden siga siendo el correcto.
+Medimos las dos alternativas descartadas (`bench/bench_bitacora.py`) agregando 100 000 mensajes:
+
+| Estructura | µs por mensaje | Memoria al final | ¿Desplaza mensajes? |
+|---|---|---|---|
+| Fila circular (la nuestra) | 0,35 | 216 bytes | no |
+| Lista con `pop(0)` | 0,23 | 248 bytes | sí, 19 por mensaje |
+| Lista que crece | 0,09 | 800 984 bytes | no |
+
+En tiempo, nuestra fila es la más lenta de las tres: está escrita en Python y las listas usan código en C. Pero la diferencia es de una décima de microsegundo por mensaje, y en una partida entran unos pocos mensajes por comando. Lo que el enunciado pide es memoria constante y sin desplazar, y la fila circular es la única de las tres que cumple las dos cosas. La lista que crece ya ocupa casi 800 KB después de 100 000 mensajes, y la lista con `pop(0)` mueve los 19 anteriores cada vez.
+
+La prueba `test_fila_sobrescribe_mas_antiguo` (en `tests/test_estructuras.py`) revisa que al pasar de la capacidad se pierda el más viejo y que el orden siga siendo el correcto.
 
 ### Límites conocidos
 
@@ -475,20 +514,20 @@ El índice se ordena con nuestro `ordenar`. Las salas casi siempre llegan ya en 
 
 | Salas | Binario (B) | JSON (B) | Carga completa bin (ms) | Carga completa JSON (ms) | 1 sala bin (ms) | 1 sala JSON (ms) |
 |---|---|---|---|---|---|---|
-| 20 | 2 823 | 4 683 | 0,22 | 0,14 | 0,09 | 0,15 |
-| 200 | 26 914 | 44 815 | 1,24 | 0,54 | 0,09 | 1,04 |
-| 2 000 | 273 067 | 453 472 | 12,78 | 6,02 | 0,11 | 5,89 |
-| 20 000 | 2 811 835 | 4 642 818 | 147,19 | 84,97 | 0,11 | 86,97 |
+| 20 | 2 823 | 4 683 | 0,20 | 0,15 | 0,09 | 0,15 |
+| 200 | 26 914 | 44 815 | 0,97 | 0,55 | 0,09 | 0,56 |
+| 2 000 | 273 067 | 453 472 | 9,75 | 5,80 | 0,10 | 5,69 |
+| 20 000 | 2 811 835 | 4 642 818 | 114,24 | 87,77 | 0,11 | 88,32 |
 
 Lo que muestran los números:
 
 - El binario ocupa **un 40 % menos** en todos los tamaños.
 - Leer una sala cuesta **lo mismo (0,1 ms)** con 20 salas que con 20 000. En JSON crece con el archivo: con 20 000 salas tarda 87 ms, unas 790 veces más.
-- La carga completa la **gana JSON**, más o menos por el doble. El módulo `json` de Python está escrito en C, y nuestro desempaquetado es Python puro. No lo escondemos: si lo único que importara fuera cargar todo de una vez, JSON sería más rápido.
+- La carga completa la **gana JSON**: con 20 000 salas, 88 ms contra 114 ms. El módulo `json` de Python está escrito en C, y nuestro desempaquetado es Python puro. Al principio la diferencia era casi del doble (147 ms). Medimos dónde se iba el tiempo y era el desempaquetado de cada sala, con unas 15 llamadas a funciones auxiliares por sala. Lo reescribimos leyendo byte a byte con los formatos de `struct` ya compilados, sin cambiar el formato del archivo, y bajó un 22 %. Igualar a JSON exigiría cambiar el formato, y no vale la pena: lo que pide el enunciado es poder leer una sala sin leer todo, y ahí el binario gana por mucho.
 
 ### Límites conocidos
 
-- La carga completa es más lenta que JSON.
+- La carga completa sigue siendo más lenta que JSON (unas 1,3 veces con 20 000 salas).
 - Cada cambio de formato invalida los guardados viejos. Nos pasó al agregar el veneno (de la versión 2 a la 3): los archivos v2 ya no cargan y el juego lo avisa.
 
 ---
@@ -562,17 +601,37 @@ La mejora siguiente sería no programar acciones para los enemigos que no tienen
 
 ## Veneno y regeneración
 
-El enunciado (sección 2.10) define las reglas: el veneno hace su daño cada 80 unidades durante 400, el antídoto lo cancela antes del siguiente pulso, y la regeneración cura cada 200 sin pasar de `vida_max`. Pero el contrato del API (`additionalProperties: false`) no trae ningún campo que diga **cuánto** daño, **cuánto** cura ni **qué** enemigo lo aplica. Se lo consultamos al profesor, que nos respondió que debería estar en la documentación del API y que lo iba a revisar. Hasta la entrega no hubo cambios.
+El enunciado (sección 2.10) define las reglas: el veneno hace su daño cada 80 unidades durante 400, el antídoto lo cancela antes del siguiente pulso, y la regeneración cura cada 200 sin pasar de `vida_max`. Pero el contrato del API (`additionalProperties: false`) no trae ningún campo que diga **cuánto** daño, **cuánto** cura ni **qué** enemigo lo aplica. Se lo consultamos al profesor. Primero nos dijo que debería estar en la documentación del API y que lo iba a revisar, y el 15 de octubre nos confirmó que los campos están en el catálogo y aparecen en los últimos niveles. Ese mismo día revisamos el Swagger, las cuatro criptas publicadas y su catálogo completo (11 fichas), y todavía no aparecían, así que suponemos que llegarán con la cripta de la revisión.
 
 En vez de inventar valores, que sería escribir estadísticas de una cripta dentro del código (la sección 9 lo prohíbe), hicimos lo siguiente:
 
-- La ficha de un enemigo puede traer `veneno` (daño por pulso) y `regeneracion` (vida por pulso). El mapeador los lee si vienen. Si no vienen, quedan en `None` y el efecto nunca ocurre. Hoy, en cripta-01, no ocurre.
+- La ficha de un enemigo puede traer `veneno` (daño por pulso) y `regeneracion` (vida por pulso). El mapeador los lee si vienen. Si no vienen, quedan en `None` y el efecto nunca ocurre. Hoy, en las criptas publicadas, no ocurre.
+- Como no conocemos el formato exacto, el mapeador acepta un número entero o un objeto con un número adentro (por ejemplo `{"daño": 2}` o `{"cantidad": 3}`). Cualquier otra cosa (un texto, un negativo, un objeto con dos números) es un error de datos con un mensaje que dice qué ficha y qué campo fallaron. Así un formato inesperado no hace caer la partida en medio de un combate.
 - Un enemigo con `veneno` envenena al jugador cuando lo golpea. Hay un solo evento de pulso a la vez en la agenda, y cada pulso programa el siguiente hasta completar los 400. Un veneno nuevo reemplaza al anterior y vuelve a durar 400 desde ese momento (decisión nuestra).
 - El antídoto **cancela el pulso pendiente sin buscarlo** en la agenda, con la misma cancelación perezosa de la sección 4.1.
 - Un enemigo con `regeneracion` empieza a regenerarse cuando se activa. Si muere, su evento se cancela.
 - Todo pasa por el historial (el pergamino lo revierte) y por el guardado (formato versión 3). Al cargar, `enlazar_evento_restaurado` vuelve a conectar cada evento con su dueño, para poder cancelarlo después sin buscarlo.
 
 Las pruebas (`tests/test_efectos.py`) usan fichas de prueba con esos campos y revisan los 5 pulsos, el antídoto, la muerte por veneno, el retroceso, la regeneración con tope y que guardar, cargar y seguir con veneno activo dé exactamente lo mismo que no haber guardado.
+
+---
+
+## Pruebas con las criptas publicadas y con una cripta grande
+
+La sección 9 dice que la revisión usa una cripta que no hemos visto, que puede ser más grande y tener más tipos y efectos. Para no llegar a ciegas hicimos dos cosas.
+
+Primero, jugamos contra el API las cuatro criptas publicadas (6, 20, 40 y 50 salas) y reprodujimos esas partidas con `--replay`. Ninguna se cayó y todas usaron muy por debajo del presupuesto (tabla de la sección 4.2).
+
+Segundo, armamos una cripta sintética en el mismo formato del API: 150 salas en 3 páginas, 12 tipos de enemigos (algunos con veneno y regeneración), todas las clases de objetos, puertas con llave y cierre automático, y trampas con y sin rearme. Sobre ella y sobre las criptas publicadas jugamos partidas con comandos al azar, incluidos comandos inválidos, guardar y cargar a mitad de partida, y cachés de 1, 3 y 25 fichas. Cada partida se reprodujo después con su bitácora:
+
+| Prueba | Partidas | Caídas | Replays distintos |
+|---|---|---|---|
+| Cripta grande, comandos al azar | 60 de 400 comandos | 0 | 0 |
+| Cripta grande, jugador casi inmortal (llega a 139 de 150 salas) | 45 de 700 comandos | 0 | 0 |
+| Cripta grande, llaves, puertas, antídoto, retroceso, guardar y cargar | 30 | 0 | 0 |
+| cripta-02, 03 y 04, jugador normal y casi inmortal | 126 | 0 | 0 |
+
+Explorar toda la cripta grande costó entre 25 y 26 solicitudes, de ellas 15 de contenido (150 salas en lotes de 10). También simulamos que el presupuesto se acaba a mitad de partida: el juego no se cae, avisa una sola vez y nunca deja al jugador en una sala cuyo contenido no conoce.
 
 ---
 

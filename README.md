@@ -35,6 +35,7 @@ Escribe `ayuda` dentro del juego para ver la lista. Los principales:
 
 - `datos_offline/`: respuestas del API guardadas para `--offline`. Para regenerarlas (gasta solicitudes): `python -m scripts.descargar_offline`
 - `cache_catalogo/`: fichas del catalogo guardadas en disco. Se regenera sola si cambia la version del catalogo.
+- `cache_criptas/`: esqueleto y contenido de cada cripta jugada en linea. Se descarta solo si cambia la version de la cripta.
 - `partidas/partida-FECHA.log`: bitacora de cada partida, sirve para `--replay`.
 - `partidas/partida-FECHA-cargada.log`: bitacora nueva que se crea al cargar una partida guardada.
 - `partidas/NOMBRE.sav`: partidas guardadas en formato binario con `guardar`.
@@ -52,7 +53,7 @@ python -m unittest
 python main.py --bench
 ```
 
-Tarda unos 15 segundos y no usa la red. Mide la agenda (heap contra lista), la busqueda en la cache (vector ordenado contra arbol binario), la recuperacion de fichas liberadas, el inventario, el historial de retroceso, los ordenamientos y su umbral, el guardado binario contra JSON y el ciclo completo entre dos decisiones del jugador (limite de 20 ms). La fila de la cripta de referencia (la primera del paquete offline) necesita datos_offline/.
+Tarda menos de un minuto y no usa la red. Mide la agenda (heap contra lista), la busqueda en la cache (vector ordenado contra arbol binario), la recuperacion de fichas liberadas, el inventario, el historial de retroceso, la decision del rastreador (contra un BFS por toda la cripta), la bitacora de 20 mensajes (contra listas), los ordenamientos y su umbral, el guardado binario contra JSON y el ciclo completo entre dos decisiones del jugador (limite de 20 ms). La fila de la cripta de referencia (la primera del paquete offline) necesita datos_offline/.
 
 ## Estructura del proyecto
 

@@ -8,6 +8,7 @@ venv/
 
 # archivos que genera el juego
 cache_catalogo/
+cache_criptas/
 partidas/
 puntajes.txt
 

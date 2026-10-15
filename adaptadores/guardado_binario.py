@@ -11,6 +11,8 @@ NINGUNO = -1   # rastro, antorcha, veneno o cursor que no existen
 _PREFIJO = struct.Struct("<4sHqqIQQ")
 _ENTRADA_INDICE = struct.Struct("<iQI")
 _CRC = struct.Struct("<I")
+_CABECERA_SALA = struct.Struct("<iqH")
+_ENEMIGO_SALA = struct.Struct("<iqB")
 
 
 class GuardadoInvalido(Exception):
@@ -212,39 +214,50 @@ def _empaquetar_sala(s):
 
 
 def _desempaquetar_sala(registro):
+    # es lo que más se repite al cargar: se lee byte a byte con formatos ya compilados,
+    # sin llamar funciones auxiliares por cada campo (el formato del archivo no cambia)
     d = _verificar_crc(registro, "sala")
-    id_sala, rastro, n_puertas = struct.unpack_from("<iqH", d, 0)
-    pos = struct.calcsize("<iqH")
+    id_sala, rastro, n = _CABECERA_SALA.unpack_from(d, 0)
+    pos = _CABECERA_SALA.size
     puertas = []
-    for _ in range(n_puertas):
-        direccion = d[pos:pos + 1].decode("ascii")
-        (abierta,) = struct.unpack_from("<B", d, pos + 1)
+    for _ in range(n):
+        puertas.append((chr(d[pos]), d[pos + 1] != 0))
         pos += 2
-        puertas.append((direccion, bool(abierta)))
-    (n,) = struct.unpack_from("<H", d, pos); pos += 2
+    n = d[pos] | d[pos + 1] << 8
+    pos += 2
     objetos = []
     for _ in range(n):
-        id_obj, pos = _leer_cadena(d, pos)
-        objetos.append(id_obj)
-    (n,) = struct.unpack_from("<H", d, pos); pos += 2
+        largo = d[pos] | d[pos + 1] << 8
+        pos += 2
+        objetos.append(d[pos:pos + largo].decode("utf-8"))
+        pos += largo
+    n = d[pos] | d[pos + 1] << 8
+    pos += 2
     enemigos = []
     for _ in range(n):
-        inst, pos = _leer_cadena(d, pos)
-        tipo, pos = _leer_cadena(d, pos)
-        vida, tiempo, activo = struct.unpack_from("<iqB", d, pos)
-        pos += struct.calcsize("<iqB")
+        largo = d[pos] | d[pos + 1] << 8
+        inst = d[pos + 2:pos + 2 + largo].decode("utf-8")
+        pos += 2 + largo
+        largo = d[pos] | d[pos + 1] << 8
+        tipo = d[pos + 2:pos + 2 + largo].decode("utf-8")
+        pos += 2 + largo
+        vida, tiempo, activo = _ENEMIGO_SALA.unpack_from(d, pos)
+        pos += _ENEMIGO_SALA.size
         enemigos.append((inst, tipo, None if vida == VIDA_DEL_CATALOGO else vida,
-                         tiempo, bool(activo)))
-    (n,) = struct.unpack_from("<H", d, pos); pos += 2
+                         tiempo, activo != 0))
+    n = d[pos] | d[pos + 1] << 8
+    pos += 2
     trampas = []
     for _ in range(n):
-        inst, pos = _leer_cadena(d, pos)
-        tipo, pos = _leer_cadena(d, pos)
-        (armada,) = struct.unpack_from("<B", d, pos)
+        largo = d[pos] | d[pos + 1] << 8
+        inst = d[pos + 2:pos + 2 + largo].decode("utf-8")
+        pos += 2 + largo
+        largo = d[pos] | d[pos + 1] << 8
+        tipo = d[pos + 2:pos + 2 + largo].decode("utf-8")
+        pos += 2 + largo
+        trampas.append((inst, tipo, d[pos] != 0))
         pos += 1
-        trampas.append((inst, tipo, bool(armada)))
-    (cargada,) = struct.unpack_from("<B", d, pos)
-    return DatosSala(id_sala, rastro, puertas, objetos, enemigos, trampas, bool(cargada))
+    return DatosSala(id_sala, rastro, puertas, objetos, enemigos, trampas, d[pos] != 0)
 
 
 def guardar(ruta, cabecera, jugador, salas):

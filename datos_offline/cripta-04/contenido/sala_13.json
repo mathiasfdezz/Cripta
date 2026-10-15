@@ -1,0 +1,11 @@
+{
+  "sala": 13,
+  "enemigos": [
+    {
+      "instancia": "e-guard-cripta-04-6",
+      "tipo": "ent_guardian_oseo"
+    }
+  ],
+  "objetos": [],
+  "trampas": []
+}

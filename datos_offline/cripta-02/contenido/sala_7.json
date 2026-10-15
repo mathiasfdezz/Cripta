@@ -1,0 +1,12 @@
+{
+  "sala": 7,
+  "enemigos": [
+    {
+      "instancia": "e-rata-cripta-02-1",
+      "tipo": "ent_rata_gigante",
+      "vida": 12
+    }
+  ],
+  "objetos": [],
+  "trampas": []
+}
