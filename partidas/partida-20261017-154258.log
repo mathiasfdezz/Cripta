@@ -1,0 +1,96 @@
+# CRIPTA partida
+cripta=cripta-02
+version_cripta=8091a5cd8b7c
+version_catalogo=be68d322d2f5
+semilla=219457926
+---
+esperar
+recoger itm_antorcha
+usar
+n
+recoger itm_daga_oxidada
+equipar
+recoger itm_llave_bronce
+n
+recoger itm_coraza_cuero
+sig
+sig
+equipar
+n
+recoger itm_llave_negra
+n
+abrir e
+e
+recoger itm_antorcha
+sig
+sig
+sig
+sig
+usar
+o
+s
+n
+abrir e
+e
+n
+recoger itm_pergamino_retroceso
+recoger itm_antidoto
+o
+o
+n
+recoger itm_antidoto
+s
+abrir e
+e
+n
+o
+n
+o
+o
+n
+n
+atacar e-rata-cripta-02-1
+recoger itm_pocion_menor
+n
+recoger itm_pergamino_retroceso
+s
+s
+n
+n
+n
+n
+atacar e-rata-cripta-02-2
+recoger itm_pocion_menor
+n
+sig
+sig
+sig
+sig
+usar
+atacar e-rata-cripta-02-4
+atacar e-rata-cripta-02-4
+sig
+usar
+atacar e-rata-cripta-02-5
+recoger itm_pocion_menor
+recoger itm_pocion_menor
+sig
+usar
+usar
+n
+n
+atacar e-guard-cripta-02-6
+atacar e-guard-cripta-02-6
+atacar e-guard-cripta-02-6
+ant
+ant
+usar
+n
+recoger itm_pocion_menor
+n
+n
+atacar e-rata-cripta-02-7
+recoger itm_pocion_menor
+n
+abrir n
+n

@@ -66,7 +66,7 @@ class PruebasPantallaDeLaSala(unittest.TestCase):
         self.assertIn("1. Rata", texto)
         self.assertIn("2. Rata", texto)
         self.assertIn("1. daga", texto)
-        self.assertIn("(itm_daga)", texto)
+        self.assertIn("¿Qué haces?", texto)
         self.assertIn("[####################] 30/30", texto)
 
     def test_atacar_y_recoger_por_numero_usan_la_ultima_pantalla(self):

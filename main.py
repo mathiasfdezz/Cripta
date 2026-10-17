@@ -80,7 +80,7 @@ def jugar(cripta_id, fuente, tamano_cache, semilla, vista):
     bitacora = BitacoraPartida(ruta)
     bitacora.crear(CabeceraPartida(datos.id, datos.version, version_catalogo, semilla))
     print(f"Cripta {datos.id} v{datos.version}, semilla {semilla}. Bitácora: {ruta}")
-    print("Escribe ayuda para ver los comandos.")
+    print("Juega eligiendo el número de una opción del menú. Escribe ? para ver la ayuda.")
 
     controlador.jugar(vista.pedir_comando, bitacora)
 
@@ -145,6 +145,10 @@ def principal(argv=None):
         print(f"[ERROR] {error}")
     except ErrorBitacora as error:
         print(f"[REPLAY] {error}")
+    except KeyboardInterrupt:
+        # Ctrl+C fuera del juego (por ejemplo esperando a la red): se sale sin traza
+        print()
+        print("Partida interrumpida.")
     print(f"Solicitudes usadas: {fuente.solicitudes_realizadas()}")
     return 1
 

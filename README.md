@@ -23,15 +23,13 @@ Banderas:
 - `--replay partidas/ARCHIVO.log`: reproduce una partida sin interaccion. Si la version de la cripta o del catalogo ya no coincide, lo informa y no la reproduce.
 - `--bench`: corre las mediciones de rendimiento y termina.
 
-## Comandos en el juego
+## Cómo se juega
 
-Escribe `ayuda` dentro del juego para ver la lista. Los principales:
-`n`/`s`/`e`/`o` (moverse), `abrir <dir>`, `atacar [instancia]`, `esperar`,
-`recoger [id]`, `soltar`, `equipar`, `usar`, `sig`/`ant` (recorrer el inventario),
-`inv [peso|valor|nombre]`, `deshacer` (pergamino de retroceso),
-`guardar [nombre]`, `cargar [nombre]` y `salir`.
+Después de cada pantalla aparece el menú **¿Qué haces?** con lo que se puede hacer en ese momento (moverse, abrir una puerta si tienes su llave, atacar, recoger, usar o equipar objetos, esperar, deshacer). Basta con escribir el número de la opción. Atajos que funcionan siempre: `i` inventario, `g` guardar, `c` cargar, `?` ayuda y `q` salir.
 
-Atajos: `norte`/`sur`/`este`/`oeste`, `abrir este`, `i` (inventario), `z` (esperar), `?` (ayuda) y `q` (salir). Los enemigos y los objetos del suelo aparecen numerados en la pantalla de la sala, así que se puede escribir `atacar 1` o `recoger 2` en vez del id. La bitácora de la partida guarda siempre el comando completo (con el id), por eso `--replay` no depende de la pantalla.
+También se pueden escribir los comandos: `n`/`s`/`e`/`o` (o `norte`, `sur`...), `abrir <dir>`, `atacar <número>`, `esperar`, `recoger <número>`, `soltar`, `equipar`, `usar`, `sig`/`ant` (recorrer el inventario), `inv [peso|valor|nombre]`, `deshacer`, `guardar [nombre]`, `cargar [nombre]` y `salir`.
+
+La bitácora de la partida guarda siempre los comandos reales (por ejemplo `sig`, `usar` o `recoger itm_antorcha`), nunca el número del menú, por eso `--replay` no depende de la pantalla.
 
 ## Archivos generados
 

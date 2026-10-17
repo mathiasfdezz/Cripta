@@ -1,0 +1,158 @@
+# CRIPTA partida
+cripta=cripta-04
+version_cripta=d6727c7f4950
+version_catalogo=be68d322d2f5
+semilla=626706118
+---
+recoger itm_antorcha
+usar
+n
+recoger itm_daga_oxidada
+recoger itm_llave_bronce
+equipar
+n
+recoger itm_coraza_cuero
+sig
+sig
+equipar
+n
+recoger itm_llave_negra
+n
+abrir e
+e
+recoger itm_antorcha
+sig
+sig
+sig
+sig
+usar
+n
+n
+n
+recoger itm_pergamino_retroceso
+recoger itm_antidoto
+o
+n
+o
+n
+o
+o
+o
+n
+deshacer
+n
+n
+n
+o
+n
+o
+n
+o
+o
+o
+o
+abrir e
+e
+o
+e
+o
+s
+s
+s
+n
+n
+n
+s
+s
+n
+s
+n
+s
+n
+n
+s
+s
+s
+n
+s
+s
+n
+n
+n
+n
+n
+s
+s
+n
+s
+n
+s
+n
+s
+s
+s
+n
+n
+s
+s
+s
+n
+n
+n
+n
+n
+recoger itm_antidoto
+n
+atacar e-rata-cripta-04-1
+atacar e-rata-cripta-04-1
+recoger itm_pocion_menor
+sig
+sig
+sig
+usar
+n
+recoger itm_pergamino_retroceso
+n
+recoger itm_pocion_menor
+n
+atacar e-rata-cripta-04-2
+atacar e-rata-cripta-04-2
+recoger itm_pocion_menor
+sig
+sig
+usar
+usar
+n
+atacar e-rata-cripta-04-4
+atacar e-rata-cripta-04-4
+recoger itm_pocion_menor
+sig
+usar
+atacar e-rata-cripta-04-5
+recoger itm_pocion_menor
+sig
+usar
+n
+recoger itm_pocion_menor
+sig
+usar
+n
+atacar e-guard-cripta-04-6
+atacar e-guard-cripta-04-6
+atacar e-guard-cripta-04-6
+n
+recoger itm_pocion_menor
+sig
+usar
+s
+n
+n
+n
+atacar e-rata-cripta-04-7
+atacar e-rata-cripta-04-7
+recoger itm_pocion_menor
+sig
+usar
+n
+n
+atacar e-rata-cripta-04-8
