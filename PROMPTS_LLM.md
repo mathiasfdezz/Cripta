@@ -1,0 +1,26 @@
+# Bitácora de prompts - CRIPTA, segunda parte
+
+Herramienta principal: Gemini CLI con GitHub spec-kit 1.1.0 (integración gemini).
+Cada entrada indica fecha, herramienta, prompt textual y para qué se usó la respuesta.
+
+---
+
+## Prompt 1 · 03/11/2026
+**Herramienta:** Gemini CLI + spec-kit 1.1.0 (`/speckit.constitution`)
+
+```text
+/speckit.constitution Escribe la constitución del proyecto CRIPTA (segunda parte), en español. Es un juego de consola en Python que consume un API REST; la primera parte ya está implementada en este repositorio y se continúa sobre ella. Usa lenguaje DEBE / DEBERÍA. Principios: (1) Estructuras propias: las estructuras de datos de los problemas evaluados se implementan a mano en el proyecto. Está prohibido usar dict o set como índice, caché o tabla de búsqueda, y también heapq, bisect, collections (deque, OrderedDict, defaultdict, Counter), networkx o cualquier biblioteca de grafos o de búsqueda de rutas. Los dict que devuelve respuesta.json() solo se leen para convertirlos en objetos. list se permite solo como almacenamiento de bajo nivel. (2) Determinismo: la misma cripta, la misma semilla y la misma secuencia de acciones producen exactamente la misma partida. Toda aleatoriedad usa la instancia random.Random(semilla) de la partida, nunca el generador global. El orden de los eventos lo define el tiempo y un número de secuencia, nunca la hora del sistema ni el orden de llegada de respuestas de red. (3) Separación MVC: el modelo no conoce HTTP, archivos ni la interfaz. El acceso a red y disco va en adaptadores detrás de interfaces. Los modos --replay, --bench y --verificar se ejecutan sin instanciar la vista interactiva. (4) Sin datos de una cripta en el código: ningún número de sala, id de entidad, cantidad de páginas, presupuesto ni estadística de una cripta concreta puede estar escrito en el código. (5) Presupuesto de red: se respeta presupuesto_solicitudes; toda solicitud HTTP cuenta, incluidos los reintentos por HTTP 429. Se usan lotes, precarga y persistencia validada por versión para gastar lo menos posible. (6) Rendimiento con evidencia: toda afirmación de rendimiento se respalda con mediciones reproducibles de --bench, con criptas sintéticas deterministas por semilla. Se respetan los límites del enunciado (por ejemplo, 20 ms por ciclo de eventos). (7) Especificación antes que código: ninguna capacidad se implementa sin su especificación, plan y tareas confirmados antes en Git. Cada requisito funcional tiene un identificador estable (FR-001...), cada tarea indica los requisitos que atiende y cada escenario de aceptación tiene al menos una prueba automatizada que cita su identificador. Si la especificación estaba mal, se corrige primero la especificación y después el código, en confirmaciones separadas. (8) Pruebas: se usa unittest y todas las pruebas se ejecutan con "python -m unittest". Una tarea no está terminada hasta que todas las pruebas pasan. (9) Estado reversible y persistente: todo estado nuevo del juego DEBE poder revertirse con el pergamino de retroceso y guardarse en el archivo de partida sin copiar el estado completo. Un cambio de formato del guardado cambia su versión y los archivos viejos se reportan como incompatibles. (10) Simplicidad y legibilidad: Python 3.11 o superior; una clase por archivo; los DTO son inmutables y sin lógica; nombres en español; comentarios breves; no se agregan dependencias nuevas sin justificarlo en el plan. Se elige el diseño más simple que cumpla la especificación.
+```
+
+**Uso de la respuesta:** generar la constitución inicial (`.specify/memory/constitution.md`) con los principios heredados de la primera parte (§2.3).
+
+---
+
+## Prompt 2 · 03/11/2026
+**Herramienta:** Gemini CLI + spec-kit 1.1.0 (`/speckit.constitution`)
+
+```text
+/speckit.constitution Corrige la constitución antes de confirmarla, sin cambiar los 10 principios salvo en esto: (a) Principio IX: agrega la excepción de que se permiten copias completas del estado solo como puntos de control de la línea de tiempo, como máximo uno cada K acciones del jugador (K configurable con --checkpoint-cada), y que fuera de esos puntos solo se guarda lo necesario para reconstruir los cambios; (b) Principio III: los modos --replay, --bench y --verificar no instancian la vista interactiva; elimina la exigencia de que la suite de pruebas no importe la vista, porque las pruebas de la vista sí la importan; (c) Principio V: si el presupuesto se agota, el programa no se cae, avisa una vez y nunca deja al jugador en una sala cuyo contenido no conoce; elimina "terminar ordenadamente"; (d) Principio VI y Gate 4: los límites de tiempo (20 ms por ciclo y los demás del enunciado) se miden con la cripta de referencia; las pruebas de estrés con criptas sintéticas más grandes documentan límites conocidos y no son una condición de aceptación; y el documento de decisiones es DECISIONES.md en la raíz del repositorio, no docs/decisiones.md; (e) Gobernanza: las enmiendas se registran en una confirmación de Git dedicada con su justificación, sin exigir issues. Mantén la versión 1.0.0 porque la constitución todavía no se ha confirmado.
+```
+
+**Uso de la respuesta:** corregir cinco reglas que Gemini agregó por su cuenta y que contradecían el enunciado (los puntos de control de §3.6) o el código existente.
