@@ -15,4 +15,4 @@ puntajes.txt
 # archivos del sistema
 desktop.ini
 Thumbs.db
-.DS_Store
+.DS_Store.env
