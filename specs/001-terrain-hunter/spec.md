@@ -8,6 +8,12 @@
 
 **Input**: User description: "Capacidad 'terreno y cazador'. Reglas: @docs/enunciado_parte2.md §3.1, §3.2 y Apéndice B (sección Terreno y cazador). Cubre: (1) costo por salida (entero >= 1, 100 si no se declara o es null, igual en ambos sentidos); mover cuesta el costo de la salida e intervalo = max(1, costo_salida*100//velocidad) para todos los actores; atacar, esperar y demás acciones no cambian; errantes y rastreadores solo cambian lo que tarda su movimiento. (2) Cazador: ficha con rango; reglas en orden (ataca si comparte sala; si no, costo mínimo d por salidas abiertas en ese instante; espera con costo 100 si no hay ruta o d > rango; si no, un paso por una ruta de costo d); desempate: la vecina de menor id; conoce esqueleto completo y puertas actuales, no le afecta la niebla ni el contenido descargado; no abre puertas; su decisión equivale siempre a calcular desde cero. (3) La vista muestra costos de las salidas de la sala actual y distingue cazadores. Incluye los 7 casos del Apéndice B de esta capacidad como escenarios de aceptación, y el requisito de 20 ms por ciclo con decenas de cazadores activos."
 
+## Clarifications
+
+### Session 2026-11-15
+
+- Q: ¿Cómo deben interactuar varios cazadores que comparten sala con el jugador o entre sí? → A: No hay límite; múltiples cazadores pueden estar en la misma sala y cada uno ataca en su turno.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Movimiento por terreno con costos variables (Priority: P1)
@@ -41,6 +47,7 @@ Como enemigo cazador, quiero perseguir al jugador utilizando la ruta de menor co
 3. **Given** un cazador con una ruta de menos salas pero mayor costo y otra ruta de más salas pero menor costo total, **When** es su turno, **Then** el cazador elige moverse por el primer paso de la ruta de menor costo acumulado. (FR-005)
 4. **Given** un cazador con dos salas vecinas que inician rutas distintas pero de igual costo mínimo hacia el jugador, **When** debe decidir su movimiento, **Then** se mueve hacia la sala vecina que tenga el identificador (ID) numérico menor. (FR-007)
 5. **Given** un cazador que tiene una ruta planificada hacia el jugador, **When** una puerta en esa ruta se cierra entre dos de sus turnos, **Then** en su siguiente turno decide su acción como si calculara desde cero, ignorando la ruta anterior. (FR-009)
+6. **Given** múltiples cazadores y el jugador en la misma sala, **When** es el turno de cada cazador, **Then** cada cazador ataca individualmente sin que la presencia de otros cazadores lo impida. (FR-015)
 
 ---
 
@@ -83,6 +90,7 @@ Como jugador, quiero identificar visualmente a los cazadores y conocer los costo
 - **FR-012**: El costo base de otras acciones no cambia: usar objeto (50), recoger/soltar (25), abrir puerta (50), atacar/esperar (100). Solo cambia el costo de movimiento.
 - **FR-013**: Si un efecto cambia la velocidad de un actor con una acción ya programada (incluida la que sigue a un movimiento por una salida costosa), el tiempo restante se reescala según P1 §2.3 y la reprogramación recibe un número de secuencia nuevo.
 - **FR-014**: Si existe una ruta abierta y `d <= rango`, el cazador se mueve un paso por una ruta de costo `d`; el costo de esa acción es el de la salida que atraviesa (FR-002).
+- **FR-015**: No existe límite de ocupación por sala; múltiples cazadores pueden coexistir en la misma sala y con el jugador, ejecutando cada uno su acción (ataque o movimiento) de forma independiente.
 
 ### Performance Requirements
 
