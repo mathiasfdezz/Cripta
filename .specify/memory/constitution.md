@@ -1,15 +1,22 @@
 <!--
 === SYNC IMPACT REPORT ===
-- Version: 1.0.0 (mantenida durante la redacción inicial previa a la primera confirmación en Git)
-- Refinements applied:
-  * Principio III (Separación Arquitectónica): Modos no interactivos (--replay, --bench, --verificar) no instancian la vista interactiva; se elimina la restricción que impedía a las pruebas de la vista importar sus módulos.
-  * Principio V (Presupuesto de Red): Ante agotamiento de presupuesto, el programa no cae, avisa una sola vez y nunca deja al jugador en una sala desconocida (eliminada la orden de terminar ordenadamente).
-  * Principio VI (Rendimiento con Evidencia): Límites de tiempo (20 ms por ciclo) evaluados en la cripta de referencia; pruebas de estrés con criptas sintéticas documentan límites conocidos sin ser condición de aceptación; referencia a DECISIONES.md en la raíz.
-  * Principio IX (Estado Reversible): Excepción que autoriza copias completas exclusivamente como checkpoints periódicos (máximo uno cada K acciones, configurable con --checkpoint-cada), guardando solo deltas fuera de ellos.
-  * Gate 4 (Auditoría de Rendimiento): Verificación del umbral de 20 ms sobre la cripta de referencia.
-  * Gobernanza (Proceso de Enmiendas): Enmiendas formalizadas directamente en un commit de Git dedicado con su justificación, sin exigir issues.
-- Follow-up TODOs:
-  * Ninguno. Documento completamente especificado y validado.
+- Version change: 1.0.0 → 1.1.0 (MINOR: ampliación de directrices de calidad y restricciones técnicas complementarias)
+- Modified principles:
+  * Principio I (Estructuras de Datos Propias (Implementación Artesanal)):
+    - Prohibición de list.sort() y sorted() en los ordenamientos evaluados.
+    - Reemplazo de la especificación sobre list: "`list` se permite como almacenamiento contiguo de bajo nivel, sin sustituir a la estructura que resuelve un problema evaluado".
+    - Inclusión de regla de gobernanza: cualquier plan o tarea generado que contradiga este principio es un defecto del grupo y se corrige antes de implementar; las dependencias propuestas por un plan se revisan.
+  * Principio VI (Rendimiento con Evidencia Empírica y Límites Críticos):
+    - Incorporación de umbrales cuantitativos específicos: verificación de resolubilidad 200 ms (cripta publicada más grande), consulta de historia 50 ms (partida de 5000 acciones, K por defecto) y un paso de "ir a" 5 ms (mapa conocido completo de la cripta de referencia).
+    - Obligación de documentar en DECISIONES.md cualquier incumplimiento en criptas sintéticas mayores como límite conocido junto con su causa.
+  * Principio VII (Especificación antes que Código y Trazabilidad Git):
+    - Delimitación estricta de contenidos: spec.md (reglas del juego, historias de usuario, escenarios de aceptación y requisitos numerados; sin nombres de estructuras, algoritmos, clases ni módulos) y plan.md (estructuras, alternativas consideradas, complejidad, módulos afectados y mediciones planificadas; sin reglas nuevas).
+    - Inclusión preceptiva de cada caso del Apéndice B del enunciado como escenario de aceptación.
+    - Cobertura de cada escenario mediante al menos una prueba automatizada o un partida.log de reproducción citando el FR.
+    - Registro obligatorio de cada comando de spec-kit ejecutado con texto propio en PROMPTS_LLM.md.
+- Added sections: Ninguna.
+- Removed sections: Ninguna.
+- Follow-up TODOs: Ninguno. Documento completamente especificado y validado.
 ==========================
 -->
 
@@ -21,8 +28,10 @@
 Todas las estructuras de datos requeridas para resolver los problemas evaluados del juego DEBEN implementarse a mano en el paquete `estructuras/` del proyecto.
 - Está terminantemente PROHIBIDO (NO SE DEBE) utilizar las colecciones nativas `dict` o `set` de Python como índice, caché, tabla de símbolos, conjunto de visitados o estructura de búsqueda en el modelo ni en los adaptadores.
 - NO SE DEBEN utilizar los módulos estándar `heapq`, `bisect`, ni `collections` (`deque`, `OrderedDict`, `defaultdict`, `Counter`), así como tampoco bibliotecas externas de grafos o cálculo de rutas (por ejemplo, `networkx`).
+- NO SE DEBEN utilizar `list.sort()` ni `sorted()` en los ordenamientos evaluados.
 - Los diccionarios nativos generados por `respuesta.json()` del cliente HTTP solo se DEBEN leer de forma puntual y transitoria en los adaptadores/mapeadores (`adaptadores/mapeadores/`) para deserializar y transformar los datos en DTOs u objetos de dominio. Ningún `dict` DEBE almacenarse en memoria a largo plazo como índice o tabla en el modelo.
-- El tipo `list` de Python se permite EXCLUSIVAMENTE como almacenamiento contiguo de bajo nivel (arreglo base) para respaldar las estructuras propias, y NO DEBE usarse como sustituto ad-hoc de estructuras especializadas.
+- `list` se permite como almacenamiento contiguo de bajo nivel, sin sustituir a la estructura que resuelve un problema evaluado.
+- Un plan o tarea generado que contradiga este principio es un defecto del grupo y se corrige antes de implementar; las dependencias que proponga un plan se revisan.
 - *Justificación*: El núcleo formativo y técnico del proyecto exige comprender, diseñar, justificar y medir las estructuras de datos algorítmicas sin delegar la complejidad a librerías de alto nivel.
 
 ### II. Determinismo Absoluto y Reproducibilidad
@@ -60,16 +69,24 @@ El sistema DEBE monitorear, respetar y no superar bajo ninguna circunstancia el 
 
 ### VI. Rendimiento con Evidencia Empírica y Límites Críticos
 Toda afirmación, optimización o decisión de diseño relativa a la complejidad y rendimiento DEBE estar respaldada por mediciones empíricas reproducibles mediante la bandera `--bench`.
-- Los límites temporales fijados por el enunciado del proyecto (incluyendo el límite máximo de 20 ms por ciclo completo de eventos entre dos decisiones del jugador) DEBEN medirse y cumplirse sobre la cripta de referencia.
-- Las pruebas de estrés con criptas sintéticas más grandes (con escalas de cientos o miles de salas, actores y eventos) se utilizan para documentar límites conocidos y comportamiento asintótico, y NO DEBEN considerarse una condición de aceptación o fallo.
+- Los límites temporales fijados por el enunciado del proyecto DEBEN medirse y cumplirse sobre la cripta de referencia:
+  - Ciclo completo de eventos entre dos decisiones del jugador: máximo 20 ms.
+  - Verificación de resolubilidad: máximo 200 ms (cripta publicada más grande).
+  - Consulta de historia: máximo 50 ms (partida de 5000 acciones, K por defecto).
+  - Un paso de "ir a": máximo 5 ms (mapa conocido completo de la cripta de referencia).
+- Las pruebas de estrés con criptas sintéticas más grandes (con escalas de cientos o miles de salas, actores y eventos) se utilizan para documentar límites conocidos y comportamiento asintótico, y NO DEBEN considerarse una condición de aceptación o fallo. Un incumplimiento medido en una cripta sintética mayor se documenta como límite conocido en `DECISIONES.md` con su causa.
 - Cada estructura de datos o algoritmo clave DEBE documentar en `DECISIONES.md` en la raíz del repositorio la comparación frente a alternativas descartadas con evidencia empírica cuantitativa.
 - *Justificación*: El rendimiento en tiempo real exige comprobación científica sobre la cripta de referencia y honestidad técnica documentando los límites asintóticos del sistema frente a cargas mayores.
 
 ### VII. Especificación antes que Código y Trazabilidad Git
 NINGUNA capacidad, algoritmo o módulo DEBE implementarse en el código sin contar previamente con su especificación formal, plan de implementación y lista de tareas aprobados y confirmados en el historial de Git.
+- `spec.md` DEBE contener reglas del juego, historias de usuario, escenarios de aceptación y requisitos numerados, y NO DEBE contener nombres de estructuras de datos, algoritmos, clases ni módulos.
+- `plan.md` DEBE contener estructuras, alternativas consideradas, complejidad, módulos afectados y mediciones planificadas, y NO DEBE contener reglas nuevas.
 - Cada requisito funcional DEBE identificarse de forma estable y unívoca (e.g., `FR-001`, `FR-002`, ...).
+- Cada caso del Apéndice B del enunciado DEBE aparecer como escenario de aceptación.
+- Cada escenario de aceptación DEBE contar con al menos una prueba automatizada o un archivo `partida.log` de reproducción que cite explícitamente el requisito funcional (`FR-xxx`) correspondiente.
 - Cada tarea técnica del plan DEBE explicitar los requisitos funcionales a los que da cumplimiento.
-- Cada escenario y criterio de aceptación de la especificación DEBE estar cubierto por al menos una prueba automatizada que cite explícitamente dicho identificador.
+- Cada comando de spec-kit ejecutado con texto propio DEBE registrarse en `PROMPTS_LLM.md`.
 - Si durante la implementación se detecta un error, inconsistencia o inviabilidad en la especificación, se DEBE enmendar primero el documento de especificación en una confirmación (`commit`) de Git independiente antes de alterar el código productivo.
 - *Justificación*: La disciplina de diseño previo previene el retrabajo, evita la desviación de alcance y proporciona una auditoría rigurosa de cada decisión tomada.
 
@@ -122,9 +139,9 @@ El código DEBE guiarse por la claridad, la sencillez arquitectónica y el respe
 Antes de fusionar o considerar completada cualquier tarea o funcionalidad en el repositorio, se DEBEN validar las siguientes compuertas:
 
 1. **Gate 1 - Validez Constitucional**: La solución propuesta y su diseño técnico DEBEN respetar sin excepciones los 10 principios fundamentales establecidos en esta constitución.
-2. **Gate 2 - Cobertura de Especificación y Trazabilidad**: Todo requisito funcional (`FR-xxx`) DEBE contar con sus correspondientes tareas asociadas y pruebas que citen su identificador.
+2. **Gate 2 - Cobertura de Especificación y Trazabilidad**: Todo requisito funcional (`FR-xxx`) DEBE contar con sus correspondientes tareas asociadas y pruebas o registros de reproducción que citen su identificador.
 3. **Gate 3 - Aprobación de Pruebas Unitarias**: El comando `python -m unittest` DEBE reportar 100% de éxito en todas las pruebas del repositorio.
-4. **Gate 4 - Auditoría de Rendimiento**: En cambios que impacten la agenda, estructuras de datos, navegación o ciclo principal, `python main.py --bench` DEBE ratificar que el ciclo de eventos no excede el umbral de 20 ms sobre la cripta de referencia. Las pruebas de estrés con criptas sintéticas más grandes documentan límites conocidos y no constituyen condición de rechazo o fallo.
+4. **Gate 4 - Auditoría de Rendimiento**: En cambios que impacten la agenda, estructuras de datos, navegación o ciclo principal, `python main.py --bench` DEBE ratificar que el ciclo de eventos no excede el umbral de 20 ms sobre la cripta de referencia, así como el cumplimiento de los límites críticos del Principio VI (resolubilidad en 200 ms, consulta de historia en 50 ms e "ir a" en 5 ms). Las pruebas de estrés con criptas sintéticas más grandes documentan límites conocidos en `DECISIONES.md` y no constituyen condición de rechazo o fallo.
 5. **Gate 5 - No Infiltración de Datos**: Las pruebas de análisis y revisión de código DEBEN verificar la ausencia total de literales de salas, identificadores fijos o constantes ligadas a criptas específicas.
 
 ## Governance
@@ -145,4 +162,4 @@ Esta constitución constituye la máxima autoridad técnica y metodológica para
 - En cada ciclo de desarrollo impulsado por especificaciones (`speckit.specify`, `speckit.plan`, `speckit.tasks`, `speckit.implement`), se DEBE ejecutar una auditoría de conformidad constitucional.
 - Toda desviación identificada en una revisión técnica es clasificada como un bloqueo crítico que DEBE corregirse de inmediato.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-03
+**Version**: 1.1.0 | **Ratified**: 2026-11-03 | **Last Amended**: 2026-11-15
