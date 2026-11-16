@@ -105,7 +105,7 @@ Como jugador, quiero identificar visualmente a los cazadores y conocer los costo
 
 ### Measurable Outcomes
 
-- **SC-001**: Procesamiento del ciclo de eventos en < 20ms con 30+ cazadores.
+- **SC-001**: Procesamiento del ciclo de eventos en < 20ms con decenas de cazadores.
 - **SC-002**: El 100% de los 7 casos del Apéndice B (Terreno y cazador) verificados mediante pruebas.
 - **SC-003**: Cálculo exacto del intervalo de movimiento según la fórmula FR-003 para velocidades de 50 a 500 y costos de 1 a 1000.
 
