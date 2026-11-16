@@ -22,7 +22,7 @@ Como cualquier actor en la cripta, quiero que mi movimiento consuma tiempo propo
 
 1. **Given** un actor con velocidad 200 en una sala con una salida de costo 50, **When** el actor se mueve a través de esa salida, **Then** el intervalo de tiempo transcurrido es 25 (`max(1, 50 * 100 // 200)`). (FR-003)
 2. **Given** un actor con velocidad alta (p.ej. 1000) atravesando una salida de costo 1, **When** el actor se mueve, **Then** el intervalo de tiempo resultante es al menos 1. (FR-003)
-3. **Given** un actor que está atravesando una salida costosa (movimiento en progreso), **When** su velocidad cambia debido a un efecto, **Then** el tiempo restante para completar el movimiento se escala según la nueva velocidad y el costo de la salida. (FR-003)
+3. **Given** un actor que acaba de moverse por una salida de costo alto y cuya próxima acción está programada, **When** un efecto cambia su velocidad en el instante t, **Then** el tiempo restante hasta esa acción se reescala como `max(1, (tiempo_siguiente - t) * velocidad_anterior // velocidad_nueva)` (P1 §2.3) y la acción queda reprogramada con un número de secuencia nuevo. (FR-013)
 
 ---
 
@@ -81,10 +81,12 @@ Como jugador, quiero identificar visualmente a los cazadores y conocer los costo
 - **FR-010**: La interfaz DEBE mostrar los costos de las salidas de la sala actual.
 - **FR-011**: La interfaz DEBE distinguir a los cazadores de otros tipos de enemigos.
 - **FR-012**: El costo base de otras acciones no cambia: usar objeto (50), recoger/soltar (25), abrir puerta (50), atacar/esperar (100). Solo cambia el costo de movimiento.
+- **FR-013**: Si un efecto cambia la velocidad de un actor con una acción ya programada (incluida la que sigue a un movimiento por una salida costosa), el tiempo restante se reescala según P1 §2.3 y la reprogramación recibe un número de secuencia nuevo.
+- **FR-014**: Si existe una ruta abierta y `d <= rango`, el cazador se mueve un paso por una ruta de costo `d`; el costo de esa acción es el de la salida que atraviesa (FR-002).
 
 ### Performance Requirements
 
-- **PR-001**: El ciclo de eventos debe ejecutarse en menos de 20 ms con decenas de cazadores activos.
+- **PR-001**: En la cripta de referencia, el ciclo de eventos entre dos decisiones del jugador debe ejecutarse en menos de 20 ms con decenas de cazadores activos.
 
 ### Key Entities *(include if feature involves data)*
 
