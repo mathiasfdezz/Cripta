@@ -8,6 +8,16 @@
 
 **Input**: User description: "Capacidad 'niebla de guerra e ir a'. Reglas: @docs/enunciado_parte2.md §3.3, §3.4, §7.3 y Apéndice B (sección Niebla de guerra e «ir a»). Cubre: (1) estados de sala para el jugador: explorada (entró al menos una vez; la inicial desde t=0), avistada (destino de una salida de una sala explorada) y desconocida; (2) memoria de puertas: el jugador observa una puerta cuando está en cualquiera de las dos salas que conecta y el mapa recuerda el último estado observado; (3) antorcha encendida: al entrar a una sala se exploran también sus vecinas por cualquier salida, sin activar enemigos ni trampas ni revelar contenido; (4) la vista y 'ir a' usan solo el conocimiento del jugador; el esqueleto completo sigue siendo infraestructura de precarga; (5) el conocimiento se guarda, se revierte con el pergamino y entra en la línea de tiempo; (6) comando para ver el mapa conocido; (7) 'ir a <sala>' hacia una sala explorada por una secuencia de movimientos ordinarios, ruta de costo mínimo solo por salas exploradas y salidas recordadas abiertas, desempate como el cazador, recálculo antes de cada paso, se detiene al llegar, al entrar a una sala con enemigos, al recibir daño o si deja de existir ruta, no abre puertas, cada paso va a partida.log como movimiento y la orden como comentario, el pergamino revierte solo el último paso. Incluye los 6 casos del Apéndice B y el límite de 5 ms por paso con el mapa completo de la cripta de referencia. Los requisitos se numeran desde FR-101 para que sean únicos en el proyecto."
 
+## Clarifications
+
+### Session 2026-11-17
+
+- Q: Una vecina explorada con la antorcha no tuvo al jugador dentro. ¿Qué estado de puertas recuerda el mapa para sus salidas? → A: El de ese instante: explorar una sala, entrando o con la antorcha, observa todas sus salidas (FR-103).
+- Q: ¿La antorcha explora las vecinas de la sala donde se enciende? → A: No. El enunciado dice «al entrar a una sala»; encender la antorcha no explora nada por sí mismo.
+- Q: ¿Qué cuenta como «recibir daño» para detener el viaje? → A: Cualquier pérdida de vida durante el paso o los eventos que siguen hasta la siguiente decisión del jugador: ataques, trampas y veneno.
+- Q: ¿Se detiene el viaje si la sala de partida tiene enemigos? → A: No; solo al entrar a una sala que los contiene. Los enemigos de la sala de partida pueden hacerle daño y entonces se detiene por daño.
+- Q: ¿Qué muestra la vista de una sala avistada? → A: Solo que hay una sala sin explorar detrás de esa salida; ni su nombre ni su número.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explorar con conocimiento parcial (Priority: P1)
