@@ -8,6 +8,16 @@
 
 **Input**: User description: "Capacidad 'línea de tiempo'. Reglas: @docs/enunciado_parte2.md §3.6, §5.5, §6.1, §7.3 y Apéndice B (sección Línea de tiempo). El pergamino sigue limitado a 5 acciones; la línea de tiempo es independiente y permite consultar sin modificar la partida el estado en cualquier instante desde el inicio. Estado en t: después de todos los eventos con tiempo <= t; si a t le corresponde una decisión del jugador, justo antes de tomarla. 'historia <t>' e 'historia #k' (estado justo antes de la acción k) muestran reloj, sala, vida y estadísticas, inventario, efectos activos, enemigos de esa sala con su vida y el mapa conocido; no consumen tiempo, no se registran como acción y no alteran el juego ni el historial de retroceso. '--replay partida.log --hasta <t>' imprime el mismo resumen sin la vista. Las acciones revertidas con un pergamino dejan de existir en la línea; consultar un instante posterior al reloj actual se rechaza. Memoria: copias completas del estado (puntos de control) como máximo una cada K acciones del jugador, K con --checkpoint-cada y valor por defecto justificado con mediciones; una consulta no aplica ni deshace más de K acciones; fuera de los puntos de control solo se guarda lo necesario para reconstruir. Si se re-simula, el punto de control incluye el estado del random. Guardar y cargar conserva la línea completa; el formato cambia y un archivo de la primera parte se detecta incompatible. Límite: 50 ms por consulta en una partida de al menos 5000 acciones con K por defecto. Incluye los 6 casos del Apéndice B. Los requisitos se numeran desde FR-301."
 
+## Clarifications
+
+### Session 2026-11-17
+
+- Q: ¿Qué número tiene «la acción k»? → A: El orden de las acciones del jugador que siguen en la línea, empezando en 1. `historia #k` con k = acciones hechas + 1 es la decisión actual.
+- Q: ¿Qué reloj muestra `historia t` si entre dos eventos no pasa nada? → A: El instante consultado t, junto con el estado que dejaron los eventos hasta t.
+- Q: ¿El pergamino revierte también el movimiento del cursor del inventario hecho después de la acción? → A: Sí. Todo lo que cambió desde el inicio de la acción hasta la decisión siguiente vuelve atrás; así la línea no guarda movimientos de cursor de acciones revertidas.
+- Q: ¿`--replay --hasta` muestra los comandos reproducidos? → A: No; solo el resumen, para poder compararlo con `historia`.
+- Q: ¿Qué valor de K por defecto? → A: El que el bench muestre como mejor equilibrio entre memoria y tiempo de consulta, cumpliendo 50 ms con 5000 acciones; se documenta en DECISIONES.md.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Consultar el pasado de la partida (Priority: P1)
