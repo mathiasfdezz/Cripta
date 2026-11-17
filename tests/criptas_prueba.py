@@ -11,8 +11,8 @@ from modelo.inventario import Inventario
 from modelo.jugador import Jugador
 
 
-def salida(origen, direccion, destino, costo=None, cerrada=False, llave=None):
-    return (origen, direccion, destino, costo, cerrada, llave)
+def salida(origen, direccion, destino, costo=None, cerrada=False, llave=None, cierre=None):
+    return (origen, direccion, destino, costo, cerrada, llave, cierre)
 
 
 def esqueleto(*salidas, salas=()):
@@ -21,8 +21,10 @@ def esqueleto(*salidas, salas=()):
     por_sala = {}
     for id_sala in salas:
         por_sala.setdefault(id_sala, {})
-    for origen, direccion, destino, costo, cerrada, llave in salidas:
+    for origen, direccion, destino, costo, cerrada, llave, cierre in salidas:
         datos = {"sala": destino}
+        if cierre is not None:
+            datos["cierre_automatico"] = cierre
         if costo is not None:
             datos["costo"] = costo
         if cerrada:
@@ -58,6 +60,7 @@ FICHAS = (
     FichaCatalogo(id="itm_llave", nombre="Llave", clase="llave", peso=1, valor=0),
     FichaCatalogo(id="itm_pergamino", nombre="Pergamino", clase="pergamino_retroceso", peso=0,
                   valor=0),
+    FichaCatalogo(id="trp_pinchos", nombre="Pinchos", clase="trampa", dano=5, rearme=300),
 )
 
 

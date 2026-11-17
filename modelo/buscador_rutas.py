@@ -31,9 +31,13 @@ class BuscadorRutas:
         self.reutilizados = 0
         self.salas_asentadas = 0
 
-    def calcular(self, objetivo, cota):
+    def calcular(self, objetivo, cota, hasta=None):
         """Distancias exactas hasta 'objetivo' (índice denso) de todas las salas que
-        están a lo sumo a 'cota'. O(R + E_R log R), R = salas dentro de la cota."""
+        están a lo sumo a 'cota'. O(R + E_R log R), R = salas dentro de la cota.
+
+        Con 'hasta' se detiene apenas esa sala queda asentada: su distancia ya es
+        final y también la de toda vecina que pueda ser su primer paso (está más
+        cerca del objetivo), así que primer_paso sigue siendo exacto."""
         self._epoca += 1
         epoca = self._epoca
         distancia, vista, asentada = self._distancia, self._vista, self._asentada
@@ -54,6 +58,8 @@ class BuscadorRutas:
                 break
             asentada[sala] = epoca
             self.salas_asentadas += 1
+            if sala == hasta:
+                break
             for origen, costo, salida in entrantes[sala]:
                 if asentada[origen] == epoca or not pasable(salida):
                     continue
@@ -87,8 +93,8 @@ class BuscadorRutas:
         return self._distancia[sala] if self._asentada[sala] == self._epoca else None
 
     def primer_paso(self, desde, d):
-        """(sala vecina, costo de la salida) del primer paso de una ruta de costo d.
-        Entre varias vecinas posibles, la de menor id (= menor índice)."""
+        """(sala vecina, costo, índice de la salida) del primer paso de una ruta de
+        costo d. Entre varias vecinas posibles, la de menor id (= menor índice)."""
         mejor = None
         for destino, costo, salida in self._grafo.salientes[desde]:
             if mejor is not None and destino >= mejor[0]:
@@ -99,5 +105,5 @@ class BuscadorRutas:
                 continue
             resto = self.distancia(destino)
             if resto is not None and costo + resto == d:
-                mejor = (destino, costo)
+                mejor = (destino, costo, salida)
         return mejor

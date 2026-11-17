@@ -16,6 +16,8 @@ SALA_NO_DISPONIBLE = "sala_no_disponible"
 PUERTA_CERRADA = "puerta_cerrada"
 PUERTA_ABIERTA = "puerta_abierta"
 SIN_LLAVE = "sin_llave"
+SALA_NO_EXPLORADA = "sala_no_explorada"
+YA_EN_DESTINO = "ya_en_destino"
 
 
 class MovimientoInvalido(ValueError):
