@@ -45,6 +45,18 @@ class PruebasMapeadorSalas(unittest.TestCase):
             "N": {"sala": 2, "cerrada": None, "llave": None, "cierre_automatico": None}}})
         self.assertFalse(sala.salidas[0].cerrada)
 
+    # FR-001: costo de las salidas
+
+    def test_costo_ausente_o_null_vale_100(self):
+        sala = sala_desde_json({"id": 1, "nombre": "A", "salidas": {
+            "N": {"sala": 2}, "S": {"sala": 3, "costo": None}, "E": {"sala": 4, "costo": 250}}})
+        self.assertEqual([s.costo for s in sala.salidas], [100, 100, 250])
+
+    def test_costo_invalido_es_error_de_datos(self):
+        for malo in (0, -5, 2.5, "100", True):
+            with self.subTest(costo=malo), self.assertRaises(ErrorDatos):
+                sala_desde_json({"id": 1, "nombre": "A", "salidas": {"N": {"sala": 2, "costo": malo}}})
+
 
 if __name__ == "__main__":
     unittest.main()

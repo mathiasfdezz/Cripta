@@ -1,4 +1,4 @@
-from bench import (bench_agenda, bench_bitacora, bench_busqueda_cache, bench_ciclo,
+from bench import (bench_agenda, bench_bitacora, bench_busqueda_cache, bench_cazadores, bench_ciclo,
                    bench_estructuras, bench_fichas_liberadas, bench_guardado, bench_ordenamientos,
                    bench_rastro, bench_retroceso, bench_umbral)
 
@@ -24,8 +24,10 @@ def principal():
     bench_umbral.principal()
     print("\n### Guardado binario vs JSON (4.10)")
     bench_guardado.principal()
-    print("\n### Presupuesto de procesamiento (5.2)")
+    print("\n### Presupuesto de procesamiento (P1 5.2 y P2 6.1, con la carga nueva)")
     bench_ciclo.principal()
+    print("\n### Segunda parte: ruta del cazador e invalidación (P2 5.1 y 5.2)")
+    bench_cazadores.principal()
 
 
 if __name__ == "__main__":

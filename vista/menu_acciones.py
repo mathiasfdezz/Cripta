@@ -1,3 +1,5 @@
+from modelo.enemigo import CAZADOR
+
 DIRECCIONES = (("N", "Norte"), ("S", "Sur"), ("E", "Este"), ("O", "Oeste"))
 PREFIJOS_DE_ID = ("itm", "ent", "trp")
 CLASES_USABLES = ("pocion", "antidoto", "antorcha")
@@ -45,7 +47,8 @@ class MenuAcciones:
             letra = salida.direccion.lower()
             puerta = esqueleto.puerta(sala.id, salida.direccion)
             if puerta is None or puerta.esta_abierta():
-                opciones.append((f"Ir al {direccion:<5} -> {nombre}", MOVER, (letra,)))
+                opciones.append((f"Ir al {direccion:<5} -> {nombre} (costo {salida.costo})",
+                                 MOVER, (letra,)))
             elif estado.jugador.puede_abrir(puerta):
                 opciones.append((f"Abrir la puerta del {direccion} (tienes la llave)", ABRIR,
                                  (f"abrir {letra}",)))
@@ -53,7 +56,8 @@ class MenuAcciones:
     @staticmethod
     def _enemigos(opciones, estado, id_sala):
         for enemigo in estado.enemigos_en_sala(id_sala):
-            opciones.append((f"Atacar a {enemigo.nombre} {enemigo.instancia} "
+            marca = " [cazador]" if enemigo.comportamiento == CAZADOR else ""
+            opciones.append((f"Atacar a {enemigo.nombre} {enemigo.instancia}{marca} "
                              f"({enemigo.vida}/{enemigo.vida_max} de vida)", ATACAR,
                              (f"atacar {enemigo.instancia}",)))
 

@@ -71,24 +71,68 @@ def principal():
                                                "eventos", "us/evento", "cumple"))
 
     if os.path.isdir("datos_offline"):
-        fuente = ClienteOffline()
-        # la cripta de referencia es la primera del paquete offline
-        datos = fuente.datos_cripta(fuente.listar_criptas()[0].id)
-        cache = CacheCatalogo(fuente, AlmacenCatalogoDisco("cache_catalogo"))
-        cache.validar_version(fuente.version_catalogo())
-        controlador = ControladorPartida(datos, fuente, cache, _VistaNula(), 1)
-        # que no termine durante la medición
-        controlador.estado.jugador.vida = 10 ** 9
-        _fila(f"{datos.id} (controlador)", _medir(lambda: controlador.ejecutar("esperar"),
-                                                  controlador.estado))
+        controlador = cripta_de_referencia()
+        estado = controlador.estado
+        cazadores = sum(1 for e in estado.enemigos_vivos() if e.comportamiento == "cazador")
+        _fila(f"{controlador.datos.id} ({cazadores} cazadores)",
+              _medir(lambda: controlador.ejecutar("esperar"), estado))
+        # el jugador se mueve: cada paso obliga a recalcular las rutas de los cazadores
+        _fila(f"{controlador.datos.id} moviéndose", _medir(_ida_y_vuelta(controlador), estado))
 
-    for filas, columnas, enemigos in ((10, 10, 100), (20, 20, 400), (25, 25, 600),
-                                      (30, 30, 900)):
-        estado = crear_partida(filas, columnas, enemigos)
+    for filas, columnas, enemigos, cazadores in ((10, 10, 100, 0), (20, 20, 400, 0),
+                                                 (25, 25, 600, 0), (30, 30, 900, 0),
+                                                 (30, 30, 900, 60)):
+        estado = crear_partida(filas, columnas, enemigos, cazadores=cazadores, rango=2400,
+                               con_costos=cazadores > 0)
         # igual que hace el controlador del juego después de cargar la cripta
         gc.freeze()
-        _fila(f"{filas * columnas} salas, {enemigos} enemigos", _medir(_ciclo_motor(estado), estado))
+        nombre = f"{filas * columnas} salas, {enemigos} enemigos"
+        if cazadores:
+            nombre = f"{filas * columnas} salas, {cazadores} cazadores"
+        _fila(nombre, _medir(_ciclo_motor(estado), estado))
     print("(eventos = eventos programados por ciclo; 'p95': cumple en el 95% de los ciclos)")
+
+
+def cripta_de_referencia():
+    """La cripta más grande del paquete offline (la de referencia), con el contenido de
+    todas sus salas cargado y todos sus enemigos activos: el peor caso del §6.1."""
+    fuente = ClienteOffline()
+    criptas = fuente.listar_criptas()
+    mayor = criptas[0]
+    for cripta in criptas:
+        if cripta.salas > mayor.salas:
+            mayor = cripta
+    datos = fuente.datos_cripta(mayor.id)
+    cache = CacheCatalogo(fuente, AlmacenCatalogoDisco("cache_catalogo"), capacidad=50)
+    cache.validar_version(fuente.version_catalogo())
+    controlador = ControladorPartida(datos, fuente, cache, _VistaNula(), 1)
+    estado = controlador.estado
+    ids = estado.esqueleto.grafo().ids
+    for i in range(0, len(ids), 10):
+        for contenido in fuente.contenido(datos.id, list(ids[i:i + 10])):
+            tipos = [e.tipo for e in contenido.enemigos] + list(contenido.objetos)
+            cache.resolver(tipos + [t.tipo for t in contenido.trampas] or ["itm_antorcha"])
+            estado.cargar_contenido(contenido)
+    for enemigo in estado.enemigos_vivos():
+        if not enemigo.activo:
+            enemigo.activo = True
+            estado.programar_accion(enemigo)
+    # que no termine durante la medición
+    estado.jugador.vida = 10 ** 9
+    estado.jugador.defensa = 10 ** 6
+    return controlador
+
+
+def _ida_y_vuelta(controlador):
+    def ciclo():
+        estado = controlador.estado
+        sala = estado.esqueleto.obtener(estado.jugador.sala)
+        for salida in sala.salidas:
+            if estado.esqueleto.puede_atravesar(sala.id, salida.direccion):
+                controlador.ejecutar(salida.direccion.lower())
+                return
+        controlador.ejecutar("esperar")
+    return ciclo
 
 
 if __name__ == "__main__":

@@ -1,5 +1,9 @@
 from estructuras.vector_ordenado import VectorOrdenado
+from modelo.grafo_cripta import GrafoCripta
 from modelo.puerta import Puerta
+
+# más cambios de puertas sin consultar que esto: se da todo por cambiado
+MAX_CAMBIOS_ANOTADOS = 64
 
 
 class Esqueleto:
@@ -11,6 +15,10 @@ class Esqueleto:
     def __init__(self):
         self._salas = VectorOrdenado()
         self._puertas = VectorOrdenado()   # (sala, direccion) -> Puerta
+        self._grafo = None
+        self._puertas_por_salida = []      # índice de salida del grafo -> Puerta
+        self._cambios = []                 # salidas cuya puerta cambió desde la última consulta
+        self._desbordado = False
 
     def agregar_pagina(self, pagina):
         """Incorpora un PaginaSalas (las salidas ya vienen en orden N, S, E, O)."""
@@ -19,6 +27,7 @@ class Esqueleto:
             if es_nueva:   # volver a agregar una sala no reinicia sus puertas
                 for salida in sala.salidas:
                     self._puertas.insertar((sala.id, salida.direccion), Puerta(salida))
+                self._grafo = None
 
     def obtener(self, id_sala):
         return self._salas.buscar(id_sala)
@@ -45,3 +54,42 @@ class Esqueleto:
         """True si hay salida en esa direccion y su puerta esta abierta."""
         puerta = self.puerta(id_sala, direccion)
         return puerta is not None and puerta.esta_abierta()
+
+    # --------------------------------------------------------- grafo y rutas
+
+    def grafo(self):
+        """El GrafoCripta de las salas cargadas. Se arma una vez, en O(V + E)."""
+        if self._grafo is None:
+            self._grafo = GrafoCripta([sala for _, sala in self._salas])
+            self._puertas_por_salida = []
+            for id_sala, direccion in self._grafo.salida_de:
+                puerta = self.puerta(id_sala, direccion)
+                puerta.indice = len(self._puertas_por_salida)
+                puerta.al_cambiar = self._anotar_cambio
+                self._puertas_por_salida.append(puerta)
+            self._cambios = []
+            self._desbordado = False
+        return self._grafo
+
+    def puerta_de_salida(self, indice):
+        return self._puertas_por_salida[indice]
+
+    def salida_abierta(self, indice):
+        return not self._puertas_por_salida[indice].cerrada
+
+    def tomar_cambios(self):
+        """(salidas cuya puerta cambió, desbordado) desde la última llamada. Si
+        desbordado es True se anotaron demasiados y hay que suponer que cambió todo."""
+        cambios, desbordado = self._cambios, self._desbordado
+        self._cambios = []
+        self._desbordado = False
+        return cambios, desbordado
+
+    def _anotar_cambio(self, indice):
+        if self._desbordado or indice is None:
+            return
+        if len(self._cambios) >= MAX_CAMBIOS_ANOTADOS:
+            self._cambios = []
+            self._desbordado = True
+            return
+        self._cambios.append(indice)
