@@ -59,5 +59,15 @@ class PruebasClienteOffline(unittest.TestCase):
             self.cliente.catalogo([f"id_{i}" for i in range(11)])
 
 
+class PruebasLlavesOffline(unittest.TestCase):
+
+    def test_llaves_del_paquete_offline(self):
+        # FR-210: --offline lee la ubicación de las llaves del paquete local
+        from adaptadores.cliente_offline import ClienteOffline
+        llaves = ClienteOffline().llaves("cripta-03")
+        self.assertIn(("itm_llave_hierro", 16, "e-cripta-03-8"),
+                      [(l.id, l.sala, l.enemigo) for l in llaves])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,7 @@ from adaptadores.cliente_red import ClienteRed
 from adaptadores.fuente_datos import validar_lote
 from adaptadores.mapeadores.error_datos import ErrorDatos, leer_campo
 from adaptadores.mapeadores.mapeador_contenido import contenido_sala_desde_json
+from adaptadores.mapeadores.mapeador_llaves import llaves_desde_json
 from adaptadores.mapeadores.mapeador_salas import pagina_salas_desde_json
 from adaptadores.rutas_offline import RutasOffline
 from estructuras.vector_ordenado import VectorOrdenado
@@ -46,6 +47,18 @@ class ClienteRedConCopia(ClienteRed):
         crudo = self._conexion.obtener_json(f"/criptas/{cripta_id}/salas?pagina={pagina}",
                                             operacion)
         resultado = pagina_salas_desde_json(crudo)
+        self._guardar(ruta, crudo)
+        return resultado
+
+    def llaves(self, cripta_id):
+        if not self._vigentes.contiene(cripta_id):
+            return super().llaves(cripta_id)
+        ruta = self._rutas.llaves(cripta_id)
+        guardadas = self._mapear(self._leer(ruta), llaves_desde_json)
+        if guardadas is not None:
+            return guardadas
+        crudo = self._conexion.obtener_json(f"/criptas/{cripta_id}/llaves", f"llaves de {cripta_id}")
+        resultado = llaves_desde_json(crudo, cripta_id)
         self._guardar(ruta, crudo)
         return resultado
 

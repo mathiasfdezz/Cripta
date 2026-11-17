@@ -36,6 +36,10 @@ class FuenteDatos(ABC):
         pass
 
     @abstractmethod
+    def llaves(self, cripta_id):
+        """Ubicación de las llaves de la cripta (tupla de UbicacionLlave)."""
+
+    @abstractmethod
     def version_catalogo(self):
         pass
 

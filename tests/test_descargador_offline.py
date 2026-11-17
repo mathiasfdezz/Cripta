@@ -19,6 +19,7 @@ RESPUESTAS = {
         {"sala": 2, "enemigos": [{"instancia": "e-1", "tipo": "ent_rata"}], "objetos": [],
          "trampas": []},
     ]},
+    "/criptas/c1/llaves": {"llaves": [{"id": "itm_llave", "sala": 2}]},
     "/catalogo/version": {"version": "cat-1"},
     "/catalogo?ids=itm_daga,ent_rata": {"entidades": [
         {"id": "itm_daga", "nombre": "Daga", "clase": "arma"},

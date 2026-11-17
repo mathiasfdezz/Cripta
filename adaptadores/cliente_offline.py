@@ -5,6 +5,7 @@ from adaptadores.fuente_datos import FuenteDatos, validar_lote
 from adaptadores.mapeadores.error_datos import leer_campo
 from adaptadores.mapeadores.mapeador_catalogo import ficha_catalogo_desde_json
 from adaptadores.mapeadores.mapeador_contenido import contenido_sala_desde_json
+from adaptadores.mapeadores.mapeador_llaves import llaves_desde_json
 from adaptadores.mapeadores.mapeador_criptas import (datos_cripta_desde_json,
                                                      resumen_cripta_desde_json)
 from adaptadores.mapeadores.mapeador_salas import pagina_salas_desde_json
@@ -48,6 +49,10 @@ class ClienteOffline(FuenteDatos):
                 self._leer(self._rutas.contenido_sala(cripta_id, sala), f"contenido de sala {sala}"))
             for sala in salas
         )
+
+    def llaves(self, cripta_id):
+        operacion = f"llaves de {cripta_id}"
+        return llaves_desde_json(self._leer(self._rutas.llaves(cripta_id), operacion), cripta_id)
 
     def version_catalogo(self):
         operacion = "versión del catálogo"

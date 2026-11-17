@@ -21,6 +21,9 @@ class RutasOffline:
     def contenido_sala(self, cripta_id, sala):
         return os.path.join(self._carpeta, cripta_id, "contenido", f"sala_{sala}.json")
 
+    def llaves(self, cripta_id):
+        return os.path.join(self._carpeta, cripta_id, "llaves.json")
+
     def version_catalogo(self):
         return os.path.join(self._carpeta, "catalogo", "version.json")
 

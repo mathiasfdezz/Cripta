@@ -5,8 +5,8 @@
 
 ## Phase 1: Datos de las llaves (FR-210)
 
-- [ ] T201 [P] `dtos/ubicacion_llave.py` y `adaptadores/mapeadores/mapeador_llaves.py`, con prueba de mapeo en `tests/test_mapeador_llaves.py` (FR-210).
-- [ ] T202 `llaves(cripta_id)` en `adaptadores/fuente_datos.py`, `cliente_red.py`, `cliente_red_con_copia.py` (copia en disco validada por versión), `cliente_offline.py` y `rutas_offline.py`; `descargador_offline.py` también la descarga; pruebas en `tests/test_cliente_red_con_copia.py` y `tests/test_cliente_offline.py` (FR-210).
+- [X] T201 [P] `dtos/ubicacion_llave.py` y `adaptadores/mapeadores/mapeador_llaves.py`, con prueba de mapeo en `tests/test_mapeador_llaves.py` (FR-210).
+- [X] T202 `llaves(cripta_id)` en `adaptadores/fuente_datos.py`, `cliente_red.py`, `cliente_red_con_copia.py` (copia en disco validada por versión), `cliente_offline.py` y `rutas_offline.py`; `descargador_offline.py` también la descarga; pruebas en `tests/test_cliente_red_con_copia.py` y `tests/test_cliente_offline.py` (FR-210).
 
 ## Phase 2: User Story 1 y 2 - Verificador (P1)
 
