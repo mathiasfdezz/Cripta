@@ -16,6 +16,7 @@ from modelo.estado_partida import (DERROTA, SUCESO_ENVENENADO, SUCESO_PUERTA_CER
                                    SUCESO_TRAMPA, SUCESO_VENENO, SUCESO_VENENO_CURADO, VICTORIA,
                                    EstadoPartida)
 from modelo.inventario import Inventario
+from modelo.linea_tiempo import CADA_POR_DEFECTO, LineaTiempo
 from modelo.jugador import Jugador
 from modelo.movimiento import MovimientoInvalido
 from modelo.precarga import salas_a_precargar
@@ -24,7 +25,7 @@ from modelo.registro_puntaje import RegistroPuntaje
 DIRECCIONES = ("N", "S", "E", "O")
 CRITERIOS_INVENTARIO = ("peso", "valor", "nombre")
 # guardar y cargar no van a la bitácora: el replay no debe tocar archivos
-SIN_BITACORA = ("guardar", "cargar", "ayuda", "inv", "mapa", "ir")
+SIN_BITACORA = ("guardar", "cargar", "ayuda", "inv", "mapa", "ir", "historia")
 
 
 class ControladorPartida:
@@ -32,7 +33,7 @@ class ControladorPartida:
     de las salas antes de que haga falta y avisa a la vista. No dibuja nada."""
 
     def __init__(self, datos, fuente, cache, vista, semilla, version_catalogo="",
-                 carpeta_partidas="partidas", esqueleto=None):
+                 carpeta_partidas="partidas", esqueleto=None, checkpoint_cada=CADA_POR_DEFECTO):
         self.datos = datos
         self.version_catalogo = version_catalogo
         self.carpeta_partidas = carpeta_partidas
@@ -54,6 +55,9 @@ class ControladorPartida:
         self.estado = EstadoPartida(semilla, jugador, self.esqueleto, obtener_ficha=cache.obtener)
         self.estado.configurar_salida(datos.sala_salida, datos.llave_salida)
         self.estado.controlar_contenido = True
+        # la línea de tiempo anota desde aquí: la llegada del contenido inicial también
+        self.checkpoint_cada = checkpoint_cada
+        self.estado.linea = LineaTiempo(checkpoint_cada)
         # la sala inicial tiene que estar cargada antes de la primera acción
         self._precargar(datos.sala_inicial)
         if not self.estado.contenido_cargado(datos.sala_inicial):
@@ -131,12 +135,8 @@ class ControladorPartida:
                 self._avisar("Lees el pergamino: el tiempo retrocede una acción.")
                 ejecutada = True
             elif orden in ("sig", "ant"):
-                inventario = self.estado.jugador.inventario
-                if orden == "sig":
-                    inventario.avanzar()
-                else:
-                    inventario.retroceder()
-                self.vista.mostrar_objeto_actual(inventario.obtener_actual())
+                actual = self.estado.mover_cursor(1 if orden == "sig" else -1)
+                self.vista.mostrar_objeto_actual(actual)
                 # mover el cursor cambia sobre qué objeto actúan soltar, equipar y usar
                 ejecutada = True
             elif orden == "inv":
@@ -153,6 +153,8 @@ class ControladorPartida:
                 self.vista.mostrar_ayuda()
             elif orden == "mapa":
                 self.vista.mostrar_mapa(self.estado, self.esqueleto)
+            elif orden == "historia":
+                self._historia(argumento)
             elif orden == "ir":
                 # «ir a 12»: cada paso se anota en la bitácora como un movimiento
                 destino = partes[2] if len(partes) > 2 and argumento.lower() == "a" else argumento
@@ -182,6 +184,28 @@ class ControladorPartida:
             self._avisar("¡Llegaste a la salida! Ganaste.")
             return
         self._despues_de_actuar()
+
+    def _historia(self, argumento):
+        """historia <t> o historia #k (FR-301 a FR-306): no consume tiempo, no va a la
+        bitácora y no cambia la partida ni el historial de retroceso."""
+        estado, que, instante = self.consultar_historia(argumento)
+        self.vista.mostrar_historia(estado, que, instante)
+
+    def consultar_historia(self, argumento):
+        """(estado, descripción, instante) de la consulta; MovimientoInvalido si no vale."""
+        linea = self.estado.linea
+        if linea is None:
+            raise MovimientoInvalido("historia", "esta partida no tiene línea de tiempo")
+        texto = (argumento or "").strip()
+        try:
+            if texto.startswith("#"):
+                numero = int(texto[1:])
+                estado = linea.estado_antes_de(self.estado, numero)
+                return estado, f"#{numero}", estado.tiempo
+            t = int(texto)
+        except ValueError:
+            raise MovimientoInvalido("historia", "usa historia <instante> o historia #<acción>")
+        return linea.estado_en(self.estado, t), f"t={t}", t
 
     def _ir_a(self, texto_destino):
         """Viaje automático (FR-108 a FR-113): un movimiento ordinario por paso, la ruta
@@ -308,6 +332,11 @@ class ControladorPartida:
         except (GuardadoInvalido, GuardadoIncompatible, ErrorFuenteDatos) as error:
             raise MovimientoInvalido("cargar", f"no se puede cargar {ruta}: {error}")
         self.estado = estado
+        if estado.linea is None:
+            # el guardado no trae una línea que reproduzca la partida: empieza desde aquí
+            estado.linea = LineaTiempo(self.checkpoint_cada, primera=estado.acciones + 1)
+            self._avisar("La línea de tiempo del guardado no se pudo reconstruir: "
+                         "historia empieza desde este punto.")
         self._pedidas = VectorOrdenado()
         for sala in estado.salas_cargadas():
             self._pedidas.insertar(sala, True)

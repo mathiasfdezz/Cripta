@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+
 class Puerta:
     """El estado de UNA salida de una sala. Cada lado de una conexión tiene la suya
     y son independientes (lo confirmó el profesor): abrir la salida E de la sala 2
@@ -13,6 +16,20 @@ class Puerta:
         # entera de qué puerta cambió, también cuando el cambio viene de deshacer
         self.indice = None
         self.al_cambiar = None
+
+    def __deepcopy__(self, memo):
+        # copia directa (un punto de control copia cientos de puertas)
+        copia = Puerta.__new__(Puerta)
+        memo[id(self)] = copia
+        copia._cerrada = self._cerrada
+        copia.llave = self.llave
+        copia.cierre_automatico = self.cierre_automatico
+        copia.costo = self.costo
+        copia._cerrada_inicial = self._cerrada_inicial
+        copia.indice = self.indice
+        # avisa al esqueleto de la copia, no al de la partida
+        copia.al_cambiar = None if self.al_cambiar is None else deepcopy(self.al_cambiar, memo)
+        return copia
 
     @property
     def cerrada(self):

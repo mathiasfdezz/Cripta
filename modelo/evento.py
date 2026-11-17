@@ -14,5 +14,18 @@ class Evento:
         # en_agenda: sigue dentro del heap (aún no se ha sacado ni descartado)
         self.en_agenda = False
 
+    def __deepcopy__(self, memo):
+        # solo tiene datos simples: copia directa, sin el camino genérico de deepcopy
+        copia = Evento.__new__(Evento)
+        memo[id(self)] = copia
+        copia.tipo = self.tipo
+        copia.objetivo = self.objetivo
+        copia.dato = self.dato
+        copia.tiempo_siguiente = self.tiempo_siguiente
+        copia.secuencia = self.secuencia
+        copia.cancelado = self.cancelado
+        copia.en_agenda = self.en_agenda
+        return copia
+
     def __repr__(self):
         return f"Evento({self.tipo}, {self.objetivo})"

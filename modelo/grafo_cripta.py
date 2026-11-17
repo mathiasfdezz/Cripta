@@ -37,6 +37,10 @@ class GrafoCripta:
                 self.salientes[origen].append((destino, salida.costo, numero))
                 self.entrantes[destino].append((origen, salida.costo, numero))
 
+    def __deepcopy__(self, memo):
+        # no cambia nunca: las copias del estado lo comparten
+        return self
+
     def indice(self, id_sala):
         """Índice denso de la sala, o None si no está en el mapa. O(log V)."""
         return self._indice.buscar(id_sala)

@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy
 
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.agenda_eventos import AgendaEventos
@@ -12,6 +13,7 @@ from modelo.movimiento import (CONTENIDO_PENDIENTE, INVENTARIO_LLENO, Movimiento
                                NO_USABLE, PARTIDA_TERMINADA, PUERTA_ABIERTA, PUERTA_CERRADA,
                                SALA_NO_DISPONIBLE, SALA_NO_EXPLORADA, SIN_ENEMIGO, SIN_LLAVE,
                                SIN_MAPA, SIN_OBJETO, SIN_PERGAMINO, SIN_SALIDA, YA_EN_DESTINO)
+from modelo.linea_tiempo import AVANZAR, CONTENIDO, CURSOR, INICIAR, PERGAMINO, SIGUIENTE
 from modelo.mapa_conocido import MapaConocido
 from modelo.rastro import Rastro
 from modelo.trampa import Trampa
@@ -115,6 +117,8 @@ class EstadoPartida:
         # lo que el jugador sabe del mapa (niebla de guerra); se arma al iniciar o al cargar
         self.mapa = None
         self._buscador_viaje = None
+        # línea de tiempo (§3.6); None si la partida no la lleva (pruebas, copias)
+        self.linea = None
 
     def configurar_salida(self, sala_salida, llave_salida):
         self.sala_salida = sala_salida
@@ -132,6 +136,7 @@ class EstadoPartida:
         # la sala inicial está explorada desde el instante 0
         self._conocer_al_entrar(self.jugador.sala)
         self.activar_enemigos(self.jugador.sala)
+        self._anotar((INICIAR,))
 
     def terminada(self):
         return self.resultado != EN_CURSO
@@ -153,6 +158,7 @@ class EstadoPartida:
             trampas = [Trampa(t.instancia, t.tipo, contenido.sala) for t in contenido.trampas]
             self._agregar_trampas(contenido.sala, trampas)
             self._cargadas.insertar(contenido.sala, True)
+        self._anotar((CONTENIDO, contenido))
 
     def contenido_cargado(self, sala):
         return self._cargadas.contiene(sala)
@@ -275,6 +281,7 @@ class EstadoPartida:
         Devuelve los ResultadoAtaque ocurridos mientras tanto."""
         if self.jugador.proximo_evento is None:
             raise ValueError("el jugador no tiene turno: falta iniciar() o murió")
+        self._anotar((AVANZAR,))
         resultados = []
         # se mira la raíz de la agenda una sola vez por evento
         while self.jugador.proximo_evento is not None:
@@ -294,9 +301,11 @@ class EstadoPartida:
         self.agenda.programar(self.tiempo + duracion, evento)
         self._asignar(self.jugador, "proximo_evento", evento)
 
-    def _gastar_turno(self, costo):
+    def _gastar_turno(self, costo, nombre, argumento=None):
         # aquí empieza una acción del jugador: lo que cambie desde ahora hasta su
         # siguiente decisión es lo que revierte un pergamino
+        if self.linea is not None:
+            self.linea.antes_de_accion(self, nombre, argumento)
         self.historial.abrir_intervalo()
         estado_azar = self.azar.getstate()
         self.historial.registrar(lambda: self.azar.setstate(estado_azar))
@@ -329,7 +338,7 @@ class EstadoPartida:
                                      f"el contenido de la sala {destino} aún no llegó")
         if not self.esqueleto.puede_atravesar(self.jugador.sala, direccion):
             raise MovimientoInvalido(PUERTA_CERRADA, "la puerta está cerrada: hay que abrirla antes")
-        self._gastar_turno(salida.costo)
+        self._gastar_turno(salida.costo, "mover_jugador", direccion)
         self._asignar(self.jugador, "sala", destino)
         self._marcar_rastro()
         self._conocer_al_entrar(destino)
@@ -354,7 +363,7 @@ class EstadoPartida:
             raise MovimientoInvalido(PUERTA_ABIERTA, "la puerta ya está abierta")
         if not self.jugador.puede_abrir(puerta):
             raise MovimientoInvalido(SIN_LLAVE, "falta la llave de esta puerta")
-        self._gastar_turno(COSTO_ABRIR_PUERTA)
+        self._gastar_turno(COSTO_ABRIR_PUERTA, "abrir_puerta", direccion)
         self._marcar_rastro()
         self._recordar(puerta, "cerrada")
         puerta.abrir()
@@ -461,7 +470,7 @@ class EstadoPartida:
 
     def esperar(self):
         self._exigir_turno()
-        self._gastar_turno(COSTO_ESPERAR)
+        self._gastar_turno(COSTO_ESPERAR, "esperar")
         self._marcar_rastro()
 
     def recoger(self, id_objeto=None):
@@ -483,7 +492,7 @@ class EstadoPartida:
         if self.jugador.inventario.esta_lleno():
             raise MovimientoInvalido(INVENTARIO_LLENO, "el inventario está lleno: suelta algo antes")
         ficha = self._obtener_ficha(id_objeto)
-        self._gastar_turno(COSTO_RECOGER)
+        self._gastar_turno(COSTO_RECOGER, "recoger", id_objeto)
         self._marcar_rastro()
         # los pergaminos quedan fuera del retroceso
         if ficha.clase == CLASE_PERGAMINO:
@@ -499,7 +508,7 @@ class EstadoPartida:
         """Suelta el objeto que se está viendo en el inventario. Cuesta 25."""
         self._exigir_turno()
         ficha = self._objeto_actual()
-        self._gastar_turno(COSTO_SOLTAR)
+        self._gastar_turno(COSTO_SOLTAR, "soltar")
         self._marcar_rastro()
         if ficha.clase == CLASE_PERGAMINO:
             with self.historial.sin_registrar():
@@ -517,7 +526,7 @@ class EstadoPartida:
         ficha = self._objeto_actual()
         if ficha.clase not in CLASES_EQUIPABLES:
             raise MovimientoInvalido(NO_EQUIPABLE, f"{ficha.nombre} no se puede equipar")
-        self._gastar_turno(COSTO_EQUIPAR)
+        self._gastar_turno(COSTO_EQUIPAR, "equipar")
         self._marcar_rastro()
         inventario = self.jugador.inventario
         nodo = inventario.actual
@@ -534,7 +543,7 @@ class EstadoPartida:
         ficha = self._objeto_actual()
         if ficha.clase not in CLASES_USABLES:
             raise MovimientoInvalido(NO_USABLE, f"{ficha.nombre} no se puede usar así")
-        self._gastar_turno(COSTO_USAR)
+        self._gastar_turno(COSTO_USAR, "usar")
         self._marcar_rastro()
         self._inventario_quitar_actual()
         if ficha.clase == "pocion":
@@ -573,8 +582,65 @@ class EstadoPartida:
             raise MovimientoInvalido(SIN_PERGAMINO, "no tienes pergaminos de retroceso")
         if not self.historial.deshacer():
             raise MovimientoInvalido(NADA_QUE_DESHACER, "no hay acciones para deshacer")
+        if self.linea is not None:
+            # lo revertido deja de existir en la línea de tiempo
+            self.linea.recortar(self.acciones + 1)
+        self.consumir_pergamino()
+
+    def consumir_pergamino(self):
+        """Gasta un pergamino sin deshacer nada (la cantidad nunca se revierte)."""
         with self.historial.sin_registrar():
-            inventario.consumir_primero_de_clase(CLASE_PERGAMINO)
+            self.jugador.inventario.consumir_primero_de_clase(CLASE_PERGAMINO)
+        self._anotar((PERGAMINO,))
+
+    def mover_cursor(self, paso):
+        """Mueve el objeto que se está viendo del inventario (1 siguiente, -1 anterior).
+        No es una acción, pero el pergamino lo revierte junto con la acción a la que sigue."""
+        inventario = self.jugador.inventario
+        self._recordar(inventario, "actual")
+        if paso > 0:
+            inventario.avanzar()
+        else:
+            inventario.retroceder()
+        self._anotar((CURSOR, 1 if paso > 0 else -1))
+        return inventario.obtener_actual()
+
+    def avanzar_hasta_tiempo(self, t):
+        """Ejecuta los eventos con tiempo <= t sin llegar al turno del jugador. Solo se
+        usa sobre copias, para consultar la línea de tiempo."""
+        while self.jugador.proximo_evento is not None:
+            entrada = self.agenda.siguiente_o_nada()
+            if entrada is None or entrada[0] > t or entrada[2] is self.jugador.proximo_evento:
+                break
+            self._ejecutar(entrada)
+
+    def copiar(self):
+        """Copia completa del estado (punto de control de la línea de tiempo), con el
+        estado del azar. La copia no tiene historial de retroceso ni línea de tiempo, y
+        comparte lo que no cambia (salas, grafo, caché del catálogo)."""
+        guardado = (self.historial, self.linea, self._buscador_cazadores,
+                    self._buscador_viaje, self.agenda.registrar)
+        vacio = Historial()
+        self.historial = vacio
+        self.linea = None
+        self._buscador_cazadores = None
+        self._buscador_viaje = None
+        self.agenda.registrar = vacio.registrar
+        if self.mapa is not None:
+            self.mapa.registrar = vacio.registrar_elemento
+        try:
+            copia = deepcopy(self)
+        finally:
+            (self.historial, self.linea, self._buscador_cazadores, self._buscador_viaje,
+             self.agenda.registrar) = guardado
+            if self.mapa is not None:
+                self.mapa.registrar = self.historial.registrar_elemento
+        copia._tiempo_anotado_en = None
+        return copia
+
+    def _anotar(self, operacion):
+        if self.linea is not None:
+            self.linea.anotar(operacion)
 
     def _objeto_actual(self):
         ficha = self.jugador.inventario.obtener_actual()
@@ -613,7 +679,7 @@ class EstadoPartida:
         if not puede_atacar(self.jugador, objetivo):
             raise MovimientoInvalido(SIN_ENEMIGO, f"no se puede atacar a {objetivo.id}: "
                                                   "debe estar vivo y en la misma sala")
-        self._gastar_turno(COSTO_ATACAR)
+        self._gastar_turno(COSTO_ATACAR, "jugador_ataca", objetivo.instancia)
         self._marcar_rastro()
         return self._atacar(self.jugador, objetivo)
 
@@ -625,6 +691,7 @@ class EstadoPartida:
         entrada = self.agenda.ver_siguiente()
         if entrada[2] is self.jugador.proximo_evento:
             raise ValueError("es el turno del jugador")
+        self._anotar((SIGUIENTE,))
         return self._ejecutar(entrada)
 
     def _ejecutar(self, entrada):

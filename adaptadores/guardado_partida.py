@@ -2,11 +2,14 @@ import os
 
 from adaptadores.guardado_binario import (NINGUNO, SIN_RECUERDO, ArchivoGuardado, DatosCabecera,
                                           DatosJugador, DatosSala, GuardadoIncompatible, guardar)
+from adaptadores.linea_binaria import desempaquetar_linea, empaquetar_linea
 from dtos.instancia_enemigo import InstanciaEnemigo
 from modelo.estado_partida import EstadoPartida
 from modelo.evento import Evento
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
+from modelo.linea_tiempo import LineaTiempo, aplicar
+from modelo.movimiento import MovimientoInvalido
 from modelo.trampa import Trampa
 
 
@@ -38,7 +41,8 @@ class GuardadoPartida:
             jugador.velocidad, cursor, estado.acciones, estado.enemigos_derrotados,
             estado.puerta_salida_abierta, estado.antorcha_hasta,
             estado.agenda.siguiente_secuencia(), estado.azar.getstate(), eventos,
-            ruta_bitacora, comandos, estado.veneno_hasta, estado.veneno_dano, estados, recuerdos)
+            ruta_bitacora, comandos, estado.veneno_hasta, estado.veneno_dano, estados, recuerdos,
+            b"" if estado.linea is None else empaquetar_linea(estado.linea))
         cabecera = DatosCabecera(datos.id, datos.version, version_catalogo, estado.semilla,
                                  estado.tiempo)
         guardar(ruta, cabecera, datos_jugador, GuardadoPartida._salas(estado))
@@ -78,6 +82,12 @@ class GuardadoPartida:
                     f"con catálogo {version_catalogo}")
             guardado = archivo.leer_jugador()
             salas = archivo.leer_todas()
+        if guardado.linea:
+            reconstruido = GuardadoPartida._reconstruir(guardado, cabecera, datos, esqueleto,
+                                                        obtener_ficha)
+            if reconstruido is not None:
+                return reconstruido, guardado.bitacora, guardado.comandos
+            # no reproduce lo guardado: se carga el estado y la línea empieza de nuevo
 
         # las puertas vuelven a como las declaró el API y luego se aplica lo guardado
         esqueleto.reiniciar_puertas()
@@ -127,6 +137,28 @@ class GuardadoPartida:
         except ValueError as error:
             raise GuardadoIncompatible(str(error))
         return estado, guardado.bitacora, guardado.comandos
+
+    @staticmethod
+    def _reconstruir(guardado, cabecera, datos, esqueleto, obtener_ficha):
+        """Con línea de tiempo (FR-309): la partida se vuelve a armar re-aplicando sus
+        operaciones desde el inicio, así los puntos de control quedan rehechos. El
+        resultado se compara con el estado guardado; si no coincide, None."""
+        cada, operaciones = desempaquetar_linea(guardado.linea)
+        esqueleto.reiniciar_puertas()
+        jugador = Jugador(datos.sala_inicial, datos.jugador, Inventario(datos.inventario_max))
+        estado = EstadoPartida(cabecera.semilla, jugador, esqueleto, obtener_ficha=obtener_ficha)
+        estado.configurar_salida(datos.sala_salida, datos.llave_salida)
+        estado.controlar_contenido = True
+        estado.linea = LineaTiempo(cada)
+        try:
+            for operacion in operaciones:
+                aplicar(estado, operacion)
+        except (MovimientoInvalido, ValueError, KeyError, IndexError):
+            return None
+        if (estado.tiempo, estado.acciones, estado.jugador.sala, estado.jugador.vida) != \
+                (cabecera.reloj, guardado.acciones, guardado.sala, guardado.vida):
+            return None
+        return estado
 
     @staticmethod
     def _armar_inventario(inventario, guardado, obtener_ficha):

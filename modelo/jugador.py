@@ -9,6 +9,7 @@ class Jugador(Actor):
         super().__init__(ID_JUGADOR, sala, estadisticas.vida_max, estadisticas.ataque,
                          estadisticas.defensa, estadisticas.velocidad)
         self.inventario = inventario
+        self.velocidad_base = estadisticas.velocidad   # sin efectos de pociones
 
     def ataque_efectivo(self):
         # el arma equipada suma su bonus
