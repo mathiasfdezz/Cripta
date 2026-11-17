@@ -27,7 +27,7 @@
 - [ ] T211 `controlador/verificacion_cripta.py`: carga esqueleto y llaves y verifica; `ControladorPartida` acepta el esqueleto ya cargado (FR-201, FR-210).
 - [ ] T212 `vista/texto_resolubilidad.py` (formateador) y `Consola.mostrar_resolubilidad` (FR-209).
 - [ ] T213 `main.py`: `--verificar <cripta>` sin vista y con código de salida; `--forzar`; verificación antes de cada partida (FR-207, FR-208).
-- [ ] T214 [P] `tests/test_verificar_main.py`: no resoluble sin `--forzar` no inicia y muestra el reporte (Apéndice B); con `--forzar` inicia; `--verificar` no instancia `Consola` y devuelve 0 o 1 (FR-207, FR-208, FR-209).
+- [ ] T214 [P] `tests/test_verificar_main.py`: no resoluble sin `--forzar` no inicia y muestra el reporte (Apéndice B); con `--forzar` inicia; la consola muestra el reporte antes del primer turno; `--verificar` no instancia `Consola` y devuelve 0 o 1 (FR-207, FR-208, FR-209).
 
 ## Phase 4: Mediciones (PR-201, PR-202)
 
