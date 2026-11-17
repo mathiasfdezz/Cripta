@@ -2,14 +2,14 @@
   "sala": 25,
   "enemigos": [
     {
-      "instancia": "e-rata-cripta-03-12",
+      "instancia": "e-cripta-03-13",
       "tipo": "ent_rata_gigante",
-      "vida": 12
+      "vida": 8
     },
     {
-      "instancia": "e-rata-cripta-03-13",
+      "instancia": "e-cripta-03-14",
       "tipo": "ent_rata_gigante",
-      "vida": 12
+      "vida": 8
     }
   ],
   "objetos": [],

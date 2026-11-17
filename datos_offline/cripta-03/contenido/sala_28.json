@@ -2,11 +2,13 @@
   "sala": 28,
   "enemigos": [
     {
-      "instancia": "e-rata-cripta-03-14",
+      "instancia": "e-cripta-03-15",
       "tipo": "ent_rata_gigante",
-      "vida": 12
+      "vida": 8
     }
   ],
-  "objetos": [],
+  "objetos": [
+    "itm_pocion_menor"
+  ],
   "trampas": []
 }

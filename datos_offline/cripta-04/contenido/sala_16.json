@@ -2,9 +2,8 @@
   "sala": 16,
   "enemigos": [
     {
-      "instancia": "e-rata-cripta-04-7",
-      "tipo": "ent_rata_gigante",
-      "vida": 12
+      "instancia": "e-cripta-04-8",
+      "tipo": "ent_carcelero_errante"
     }
   ],
   "objetos": [],

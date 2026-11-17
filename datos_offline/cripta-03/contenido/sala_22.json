@@ -2,7 +2,7 @@
   "sala": 22,
   "enemigos": [
     {
-      "instancia": "e-guard-cripta-03-11",
+      "instancia": "e-cripta-03-12",
       "tipo": "ent_guardian_oseo"
     }
   ],

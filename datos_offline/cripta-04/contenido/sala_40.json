@@ -2,9 +2,9 @@
   "sala": 40,
   "enemigos": [
     {
-      "instancia": "e-rata-cripta-04-22",
+      "instancia": "e-cripta-04-25",
       "tipo": "ent_rata_gigante",
-      "vida": 12
+      "vida": 8
     }
   ],
   "objetos": [],
