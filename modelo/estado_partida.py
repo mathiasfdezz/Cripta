@@ -3,7 +3,8 @@ import random
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.agenda_eventos import AgendaEventos
 from modelo.combate import atacar, puede_atacar
-from modelo.enemigo import ERRANTE, RASTREADOR, Enemigo
+from modelo.buscador_rutas import BuscadorRutas
+from modelo.enemigo import CAZADOR, ERRANTE, RASTREADOR, Enemigo
 from modelo.evento import Evento
 from modelo.historial import Historial
 from modelo.movimiento import (CONTENIDO_PENDIENTE, INVENTARIO_LLENO, MovimientoInvalido,
@@ -38,7 +39,7 @@ SUCESO_VENENO_CURADO = "veneno_curado"
 # un costo equivale a esa misma cantidad de tiempo a velocidad 100; a más velocidad, menos tiempo
 VELOCIDAD_BASE = 100
 COSTO_ACCION = 100          # acción de un enemigo (también su primera acción al activarse)
-COSTO_MOVER = 100
+COSTO_MOVER = 100          # moverse cuesta lo que diga la salida; esto es si no dice nada
 COSTO_ATACAR = 100
 COSTO_ESPERAR = 100
 COSTO_USAR = 50
@@ -105,6 +106,9 @@ class EstadoPartida:
         self._cargadas = VectorOrdenado()   # sala -> True cuando su contenido ya está
         # intervalo del historial en el que ya se anotó el reloj (ver _fijar_tiempo)
         self._tiempo_anotado_en = None
+        # rutas de los cazadores: un cálculo compartido hasta el mayor rango conocido
+        self._buscador_cazadores = None
+        self.cota_cazadores = 0
 
     def configurar_salida(self, sala_salida, llave_salida):
         self.sala_salida = sala_salida
@@ -209,6 +213,9 @@ class EstadoPartida:
             raise ValueError(f"ya existe el enemigo {instancia.instancia}")
         enemigo = Enemigo(instancia, ficha, sala)
         self._enemigos.insertar(enemigo.instancia, enemigo)
+        if enemigo.comportamiento == CAZADOR:
+            # solo crece: es una cota, no hace falta deshacerla
+            self.cota_cazadores = max(self.cota_cazadores, enemigo.rango or 0)
         return enemigo
 
     def activar_enemigos(self, sala):
@@ -300,8 +307,8 @@ class EstadoPartida:
     # ------------------------------------------------------ mapa y puertas
 
     def mover_jugador(self, direccion):
-        """Mueve al jugador por una salida (N, S, E, O) a la sala vecina. Cuesta
-        COSTO_MOVER. Si la puerta está cerrada hay que abrirla antes (otra acción).
+        """Mueve al jugador por una salida (N, S, E, O) a la sala vecina. Cuesta el
+        costo de esa salida. Si la puerta está cerrada hay que abrirla antes (otra acción).
         Al entrar se activan los enemigos de la sala destino. Devuelve la sala nueva."""
         self._exigir_turno()
         salida = self._salida(direccion)
@@ -313,7 +320,7 @@ class EstadoPartida:
                                      f"el contenido de la sala {destino} aún no llegó")
         if not self.esqueleto.puede_atravesar(self.jugador.sala, direccion):
             raise MovimientoInvalido(PUERTA_CERRADA, "la puerta está cerrada: hay que abrirla antes")
-        self._gastar_turno(COSTO_MOVER)
+        self._gastar_turno(salida.costo)
         self._asignar(self.jugador, "sala", destino)
         self._marcar_rastro()
         # las trampas armadas saltan apenas se entra, antes del siguiente evento
@@ -597,9 +604,10 @@ class EstadoPartida:
                 resultado = self._atacar(enemigo, self.jugador)
                 if enemigo.veneno and self.jugador.esta_vivo():
                     self._envenenar(enemigo)
+                costo = COSTO_ATACAR
             else:
-                self._comportarse(enemigo)
-            self.programar_accion(enemigo)
+                costo = self._comportarse(enemigo)
+            self.programar_accion(enemigo, costo)
         return resultado
 
     def _envenenar(self, enemigo):
@@ -635,19 +643,49 @@ class EstadoPartida:
         self._asignar(self, "_evento_veneno", None)
 
     def _comportarse(self, enemigo):
-        """Lo que hace un enemigo que no comparte sala con el jugador. Moverse o
-        esperar cuestan lo mismo (100), así que la próxima acción no cambia."""
+        """Lo que hace un enemigo que no comparte sala con el jugador. Devuelve el
+        costo de su acción: el de la salida que atraviesa, o 100 si espera."""
         if self.rastro is None:
-            return
+            return COSTO_ESPERAR
         if enemigo.comportamiento == ERRANTE:
-            opciones = self.rastro.salidas_abiertas(enemigo.sala)
+            opciones = self.rastro.pasos_abiertos(enemigo.sala)
             if opciones:
-                self._asignar(enemigo, "sala", opciones[self.azar.randrange(len(opciones))])
-        elif enemigo.comportamiento == RASTREADOR:
-            destino = self.rastro.sala_mas_fresca(enemigo.sala, self.tiempo)
-            if destino is not None:
+                destino, costo = opciones[self.azar.randrange(len(opciones))]
                 self._asignar(enemigo, "sala", destino)
+                return costo
+        elif enemigo.comportamiento == RASTREADOR:
+            paso = self.rastro.paso_mas_fresco(enemigo.sala, self.tiempo)
+            if paso is not None:
+                self._asignar(enemigo, "sala", paso[0])
+                return paso[1]
+        elif enemigo.comportamiento == CAZADOR:
+            return self._cazar(enemigo)
         # guardián: espera, nunca deja su sala
+        return COSTO_ESPERAR
+
+    def _cazar(self, enemigo):
+        """Un paso por una ruta de costo mínimo hasta el jugador, solo por salidas
+        abiertas ahora. Espera si no hay ruta o si cuesta más que su rango."""
+        grafo = self.esqueleto.grafo()
+        desde = grafo.indice(enemigo.sala)
+        objetivo = grafo.indice(self.jugador.sala)
+        if desde is None or objetivo is None:
+            return COSTO_ESPERAR
+        buscador = self.buscador_cazadores()
+        cambios, desbordado = self.esqueleto.tomar_cambios()
+        buscador.asegurar(objetivo, self.cota_cazadores, cambios, desbordado)
+        d = buscador.distancia(desde)
+        if d is None or d > (enemigo.rango or 0):
+            return COSTO_ESPERAR
+        destino, costo = buscador.primer_paso(desde, d)
+        self._asignar(enemigo, "sala", grafo.ids[destino])
+        return costo
+
+    def buscador_cazadores(self):
+        if self._buscador_cazadores is None:
+            self._buscador_cazadores = BuscadorRutas(self.esqueleto.grafo(),
+                                                     self.esqueleto.salida_abierta)
+        return self._buscador_cazadores
 
     def _atacar(self, atacante, defensor):
         self._recordar(defensor, "vida")

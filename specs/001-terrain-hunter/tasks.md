@@ -29,8 +29,8 @@
 
 **Purpose**: Construcción de adyacencias dirigidas, resolución de índices densos en $O(V+E)$ y soporte de costos en el esqueleto.
 
-- [ ] T005 Actualizar `modelo/puerta.py` para almacenar `costo: int` y avisar al esqueleto el índice de su salida cada vez que cambia su estado, también al deshacer o cargar (FR-001, FR-009).
-- [ ] T006 Crear `modelo/grafo_cripta.py` (`GrafoCripta`) y modificar `modelo/esqueleto.py` para numerar las salidas, resolver los índices densos `[0, V-1]` y construir las listas de **salidas entrantes** y salientes con su costo e índice de salida en $O(V+E)$ (FR-001, FR-008).
+- [X] T005 Actualizar `modelo/puerta.py` para almacenar `costo: int` y avisar al esqueleto el índice de su salida cada vez que cambia su estado, también al deshacer o cargar (FR-001, FR-009).
+- [X] T006 Crear `modelo/grafo_cripta.py` (`GrafoCripta`) y modificar `modelo/esqueleto.py` para numerar las salidas, resolver los índices densos `[0, V-1]` y construir las listas de **salidas entrantes** y salientes con su costo e índice de salida en $O(V+E)$ (FR-001, FR-008).
 
 ---
 
@@ -39,14 +39,14 @@
 **Goal**: Todos los actores consumen tiempo e intervalo según el costo de la salida atravesada, preservando la fórmula de velocidad y reescalado de tiempo.
 
 ### Tests for User Story 1 (TDD - Escribir primero)
-- [ ] T007 [P] [US1] Escribir prueba unitaria `test_intervalo_movimiento_costo_variable` en `tests/test_movimiento_terreno.py` citando FR-002 y FR-003: actor vel 200 en salida costo 50 da intervalo 25 (`max(1, 50 * 100 // 200)`).
-- [ ] T008 [P] [US1] Escribir prueba unitaria `test_intervalo_velocidad_alta_costo_uno` en `tests/test_movimiento_terreno.py` citando FR-003 (Apéndice B): velocidad alta atravesando costo 1 da intervalo al menos 1 (`max(1, 1 * 100 // 1000) >= 1`).
-- [ ] T009 [P] [US1] Escribir prueba unitaria `test_reescalado_velocidad_salida_costosa` en `tests/test_movimiento_terreno.py` citando FR-013 (Apéndice B): reescalado del tiempo restante por cambio de velocidad durante acción en agenda según P1 §2.3.
-- [ ] T010 [P] [US1] Escribir prueba unitaria `test_costos_acciones_no_cambian` en `tests/test_movimiento_terreno.py` citando FR-012: verificar que atacar/esperar (costo 100), usar objeto (50), recoger/soltar (25) y abrir puerta (50) conservan sus costos base.
+- [X] T007 [P] [US1] Escribir prueba unitaria `test_intervalo_movimiento_costo_variable` en `tests/test_movimiento_terreno.py` citando FR-002 y FR-003: actor vel 200 en salida costo 50 da intervalo 25 (`max(1, 50 * 100 // 200)`).
+- [X] T008 [P] [US1] Escribir prueba unitaria `test_intervalo_velocidad_alta_costo_uno` en `tests/test_movimiento_terreno.py` citando FR-003 (Apéndice B): velocidad alta atravesando costo 1 da intervalo al menos 1 (`max(1, 1 * 100 // 1000) >= 1`).
+- [X] T009 [P] [US1] Escribir prueba unitaria `test_reescalado_velocidad_salida_costosa` en `tests/test_movimiento_terreno.py` citando FR-013 (Apéndice B): reescalado del tiempo restante por cambio de velocidad durante acción en agenda según P1 §2.3.
+- [X] T010 [P] [US1] Escribir prueba unitaria `test_costos_acciones_no_cambian` en `tests/test_movimiento_terreno.py` citando FR-012: verificar que atacar/esperar (costo 100), usar objeto (50), recoger/soltar (25) y abrir puerta (50) conservan sus costos base.
 
 ### Implementation for User Story 1
-- [ ] T011 [US1] Actualizar `mover_jugador` en `modelo/estado_partida.py` para que el costo de la acción sea `salida.costo` y el intervalo programado sea `max(1, costo_salida * 100 // velocidad)` (FR-002, FR-003).
-- [ ] T012 [US1] Adaptar `_comportarse` y `programar_accion` en `modelo/estado_partida.py` (y la vecindad de `modelo/rastro.py`) para que errantes y rastreadores usen el costo de la salida que atraviesan, conservando sus comportamientos (FR-003, FR-012).
+- [X] T011 [US1] Actualizar `mover_jugador` en `modelo/estado_partida.py` para que el costo de la acción sea `salida.costo` y el intervalo programado sea `max(1, costo_salida * 100 // velocidad)` (FR-002, FR-003).
+- [X] T012 [US1] Adaptar `_comportarse` y `programar_accion` en `modelo/estado_partida.py` (y la vecindad de `modelo/rastro.py`) para que errantes y rastreadores usen el costo de la salida que atraviesan, conservando sus comportamientos (FR-003, FR-012).
 
 ---
 
@@ -55,20 +55,20 @@
 **Goal**: Enemigo cazador persigue al jugador por la ruta de costo mínimo usando salidas abiertas, desempate por ID, rango y cálculo bajo demanda equivalente a calcular desde cero.
 
 ### Tests for User Story 2 (TDD - Escribir primero)
-- [ ] T013 [P] [US2] Escribir prueba unitaria `test_cazador_sin_ruta_espera` en `tests/test_cazador.py` citando FR-006 (Apéndice B): cazador sin ruta abierta hacia el jugador espera con costo 100.
-- [ ] T014 [P] [US2] Escribir prueba unitaria `test_cazador_fuera_de_rango_espera` en `tests/test_cazador.py` citando FR-006 (Apéndice B): ruta mínima $d > rango$ causa que el cazador espere con costo 100.
-- [ ] T015 [P] [US2] Escribir prueba unitaria `test_cazador_elige_ruta_menor_costo` en `tests/test_cazador.py` citando FR-005 (Apéndice B): entre ruta de menos salas pero más costo y ruta de más salas pero menor costo, sigue la de menor costo.
-- [ ] T016 [P] [US2] Escribir prueba unitaria `test_cazador_desempate_menor_id` en `tests/test_cazador.py` citando FR-007 (Apéndice B): dos vecinas que inician rutas de igual costo mínimo desempatan por la de menor ID de sala vecina.
-- [ ] T017 [P] [US2] Escribir prueba unitaria `test_cazador_puerta_se_cierra_entre_turnos` en `tests/test_cazador.py` citando FR-009 (Apéndice B): puerta en su ruta se cierra entre dos turnos y el cazador decide en el siguiente turno como si calculara desde cero.
-- [ ] T018 [P] [US2] Escribir prueba unitaria `test_multiples_cazadores_comparten_sala` en `tests/test_cazador.py` citando FR-015: múltiples cazadores en la misma sala atacan o actúan individualmente sin bloquearse entre sí.
-- [ ] T019 [P] [US2] Escribir prueba unitaria `test_cazador_salida_un_solo_sentido` en `tests/test_cazador.py` citando FR-005 y FR-008: verificación de que el cazador solo transita salidas dirigidas válidas hacia el jugador.
-- [ ] T020 [P] [US2] Escribir prueba unitaria `test_cazador_puerta_cerrada_unilateral` en `tests/test_cazador.py` citando FR-005 y FR-008: una puerta cerrada solo en un sentido bloquea el paso en ese sentido pero no en el inverso.
+- [X] T013 [P] [US2] Escribir prueba unitaria `test_cazador_sin_ruta_espera` en `tests/test_cazador.py` citando FR-006 (Apéndice B): cazador sin ruta abierta hacia el jugador espera con costo 100.
+- [X] T014 [P] [US2] Escribir prueba unitaria `test_cazador_fuera_de_rango_espera` en `tests/test_cazador.py` citando FR-006 (Apéndice B): ruta mínima $d > rango$ causa que el cazador espere con costo 100.
+- [X] T015 [P] [US2] Escribir prueba unitaria `test_cazador_elige_ruta_menor_costo` en `tests/test_cazador.py` citando FR-005 (Apéndice B): entre ruta de menos salas pero más costo y ruta de más salas pero menor costo, sigue la de menor costo.
+- [X] T016 [P] [US2] Escribir prueba unitaria `test_cazador_desempate_menor_id` en `tests/test_cazador.py` citando FR-007 (Apéndice B): dos vecinas que inician rutas de igual costo mínimo desempatan por la de menor ID de sala vecina.
+- [X] T017 [P] [US2] Escribir prueba unitaria `test_cazador_puerta_se_cierra_entre_turnos` en `tests/test_cazador.py` citando FR-009 (Apéndice B): puerta en su ruta se cierra entre dos turnos y el cazador decide en el siguiente turno como si calculara desde cero.
+- [X] T018 [P] [US2] Escribir prueba unitaria `test_multiples_cazadores_comparten_sala` en `tests/test_cazador.py` citando FR-015: múltiples cazadores en la misma sala atacan o actúan individualmente sin bloquearse entre sí.
+- [X] T019 [P] [US2] Escribir prueba unitaria `test_cazador_salida_un_solo_sentido` en `tests/test_cazador.py` citando FR-005 y FR-008: verificación de que el cazador solo transita salidas dirigidas válidas hacia el jugador.
+- [X] T020 [P] [US2] Escribir prueba unitaria `test_cazador_puerta_cerrada_unilateral` en `tests/test_cazador.py` citando FR-005 y FR-008: una puerta cerrada solo en un sentido bloquea el paso en ese sentido pero no en el inverso.
 
 ### Implementation for User Story 2
-- [ ] T021 [US2] Implementar `modelo/buscador_rutas.py` (`BuscadorRutas`) con Dijkstra artesanal desde el jugador usando las salidas entrantes, sistema de épocas para reinicio $O(1)$ sin asignación global y detención en la cota, acotado a $O(R + E_R \log R)$ (FR-005, FR-008, PR-001).
-- [ ] T022 [US2] Implementar la invalidación selectiva en `modelo/buscador_rutas.py`: movimiento del jugador, cambio de una salida que entra a una sala asentada o cota mayor que la usada (FR-008, FR-009).
-- [ ] T023 [US2] Implementar el comportamiento `cazador` en `modelo/enemigo.py` (constante y `rango`) y `modelo/estado_partida.py`: 1. Atacar si comparte sala; 2. Consultar el costo mínimo en `BuscadorRutas`; 3. Esperar (costo 100) si no hay ruta o $d > rango$; 4. Moverse a la vecina de costo $d$ desempatando por menor ID, con el costo de esa salida (FR-004, FR-005, FR-006, FR-007, FR-014).
-- [ ] T023a [P] [US2] Escribir prueba `test_reutilizar_equivale_a_calcular_desde_cero` en `tests/test_cazador.py` citando FR-009: en una partida con puertas que se abren y cierran, cada decisión con el mapa reutilizado coincide con la de un buscador nuevo.
+- [X] T021 [US2] Implementar `modelo/buscador_rutas.py` (`BuscadorRutas`) con Dijkstra artesanal desde el jugador usando las salidas entrantes, sistema de épocas para reinicio $O(1)$ sin asignación global y detención en la cota, acotado a $O(R + E_R \log R)$ (FR-005, FR-008, PR-001).
+- [X] T022 [US2] Implementar la invalidación selectiva en `modelo/buscador_rutas.py`: movimiento del jugador, cambio de una salida que entra a una sala asentada o cota mayor que la usada (FR-008, FR-009).
+- [X] T023 [US2] Implementar el comportamiento `cazador` en `modelo/enemigo.py` (constante y `rango`) y `modelo/estado_partida.py`: 1. Atacar si comparte sala; 2. Consultar el costo mínimo en `BuscadorRutas`; 3. Esperar (costo 100) si no hay ruta o $d > rango$; 4. Moverse a la vecina de costo $d$ desempatando por menor ID, con el costo de esa salida (FR-004, FR-005, FR-006, FR-007, FR-014).
+- [X] T023a [P] [US2] Escribir prueba `test_reutilizar_equivale_a_calcular_desde_cero` en `tests/test_cazador.py` citando FR-009: en una partida con puertas que se abren y cierran, cada decisión con el mapa reutilizado coincide con la de un buscador nuevo.
 
 ---
 

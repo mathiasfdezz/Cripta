@@ -5,6 +5,7 @@ CLASE_ENEMIGO = "enemigo"
 GUARDIAN = "guardián"
 ERRANTE = "errante"
 RASTREADOR = "rastreador"
+CAZADOR = "cazador"
 
 
 class Enemigo(Actor):
@@ -21,8 +22,9 @@ class Enemigo(Actor):
         self.instancia = instancia.instancia
         self.tipo = ficha.id
         self.nombre = ficha.nombre
-        # guardián / errante / rastreador: lo usa EstadoPartida._comportarse
+        # guardián / errante / rastreador / cazador: lo usa EstadoPartida._comportarse
         self.comportamiento = ficha.comportamiento
+        self.rango = ficha.rango   # solo cazadores
         self.suelta = tuple(ficha.suelta)   # ids de catálogo que deja al morir
         self.veneno = ficha.veneno
         self.regeneracion = ficha.regeneracion
