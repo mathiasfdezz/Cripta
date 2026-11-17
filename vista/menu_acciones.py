@@ -1,4 +1,5 @@
 from modelo.enemigo import CAZADOR
+from modelo.mapa_conocido import CERRADA, EXPLORADA
 
 DIRECCIONES = (("N", "Norte"), ("S", "Sur"), ("E", "Este"), ("O", "Oeste"))
 PREFIJOS_DE_ID = ("itm", "ent", "trp")
@@ -30,6 +31,7 @@ class MenuAcciones:
         self._suelo(opciones, estado, sala.id)
         self._inventario(opciones, estado)
         opciones.append(("Esperar (dejar pasar el turno)", OTRA, ("esperar",)))
+        opciones.append(("Ver el mapa conocido (para viajar: ir a <sala>)", OTRA, ("mapa",)))
         inventario = jugador.inventario
         if inventario.cantidad_pergaminos() > 0 and estado.historial.acciones_guardadas() > 0:
             opciones.append(("Leer un pergamino: deshacer la última acción", OTRA, ("deshacer",)))
@@ -41,8 +43,7 @@ class MenuAcciones:
 
     def _salidas(self, opciones, estado, esqueleto, sala):
         for salida in sala.salidas:
-            destino = esqueleto.obtener(salida.sala_destino)
-            nombre = destino.nombre if destino is not None else f"sala {salida.sala_destino}"
+            nombre = self.nombre_conocido(estado, esqueleto, salida.sala_destino)
             direccion = self.nombre_direccion(salida.direccion)
             letra = salida.direccion.lower()
             puerta = esqueleto.puerta(sala.id, salida.direccion)
@@ -117,6 +118,26 @@ class MenuAcciones:
         if objeto.modificador_velocidad and objeto.duracion:
             partes.append(f"velocidad {objeto.modificador_velocidad:+} durante {objeto.duracion}")
         return f" ({', '.join(partes)})" if partes else ""
+
+    @staticmethod
+    def nombre_conocido(estado, esqueleto, id_sala):
+        """Lo que el jugador sabe de una sala: su nombre solo si la exploró."""
+        sala = esqueleto.obtener(id_sala)
+        if sala is None:
+            return "sala desconocida"
+        if estado.mapa is not None and estado.mapa.estado_de(id_sala) != EXPLORADA:
+            return "sala sin explorar"
+        return f"{sala.nombre} ({id_sala})"
+
+    @staticmethod
+    def puerta_recordada_cerrada(estado, esqueleto, id_sala, direccion):
+        """Cómo recuerda el jugador esa puerta (en su sala coincide con la real)."""
+        puerta = esqueleto.puerta(id_sala, direccion)
+        if puerta is None:
+            return False
+        if estado.mapa is None or puerta.indice is None:
+            return puerta.esta_cerrada()
+        return estado.mapa.recuerdo_de(puerta.indice) == CERRADA
 
     @staticmethod
     def nombre_direccion(letra):

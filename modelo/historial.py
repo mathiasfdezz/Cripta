@@ -41,6 +41,11 @@ class Historial:
         if self._actual is not None:
             self._actual.apilar((objeto, atributo, anterior))
 
+    def registrar_elemento(self, lista, posicion, anterior):
+        """lista[posicion] valía 'anterior' antes del cambio (mapa conocido)."""
+        if self._actual is not None:
+            self._actual.apilar((lista, posicion, anterior))
+
     def deshacer(self):
         """Revierte el último intervalo completo. False si no hay nada que deshacer."""
         if self._intervalos.esta_vacia():
@@ -51,7 +56,10 @@ class Historial:
             while not pila.esta_vacia():
                 cambio = pila.desapilar()
                 if isinstance(cambio, tuple):
-                    setattr(cambio[0], cambio[1], cambio[2])
+                    if isinstance(cambio[1], int):
+                        cambio[0][cambio[1]] = cambio[2]
+                    else:
+                        setattr(cambio[0], cambio[1], cambio[2])
                 else:
                     cambio()
         # lo que pase hasta la próxima acción del jugador ya no se anota

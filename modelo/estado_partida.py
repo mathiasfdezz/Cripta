@@ -10,8 +10,9 @@ from modelo.historial import Historial
 from modelo.movimiento import (CONTENIDO_PENDIENTE, INVENTARIO_LLENO, MovimientoInvalido,
                                NADA_QUE_DESHACER, NADA_QUE_RECOGER, NO_EQUIPABLE, NO_ES_TURNO,
                                NO_USABLE, PARTIDA_TERMINADA, PUERTA_ABIERTA, PUERTA_CERRADA,
-                               SALA_NO_DISPONIBLE, SIN_ENEMIGO, SIN_LLAVE, SIN_MAPA, SIN_OBJETO,
-                               SIN_PERGAMINO, SIN_SALIDA)
+                               SALA_NO_DISPONIBLE, SALA_NO_EXPLORADA, SIN_ENEMIGO, SIN_LLAVE,
+                               SIN_MAPA, SIN_OBJETO, SIN_PERGAMINO, SIN_SALIDA, YA_EN_DESTINO)
+from modelo.mapa_conocido import MapaConocido
 from modelo.rastro import Rastro
 from modelo.trampa import Trampa
 
@@ -35,6 +36,8 @@ SUCESO_PUERTA_CERRADA = "puerta_cerrada"
 SUCESO_ENVENENADO = "envenenado"
 SUCESO_VENENO = "veneno"
 SUCESO_VENENO_CURADO = "veneno_curado"
+
+SIN_COTA = 1 << 60   # «ir a» no tiene rango: busca en todo lo explorado
 
 # un costo equivale a esa misma cantidad de tiempo a velocidad 100; a más velocidad, menos tiempo
 VELOCIDAD_BASE = 100
@@ -109,6 +112,9 @@ class EstadoPartida:
         # rutas de los cazadores: un cálculo compartido hasta el mayor rango conocido
         self._buscador_cazadores = None
         self.cota_cazadores = 0
+        # lo que el jugador sabe del mapa (niebla de guerra); se arma al iniciar o al cargar
+        self.mapa = None
+        self._buscador_viaje = None
 
     def configurar_salida(self, sala_salida, llave_salida):
         self.sala_salida = sala_salida
@@ -122,6 +128,9 @@ class EstadoPartida:
         self.tiempo = 0
         self._programar_turno_jugador(0)
         self._marcar_rastro()
+        self.preparar_mapa()
+        # la sala inicial está explorada desde el instante 0
+        self._conocer_al_entrar(self.jugador.sala)
         self.activar_enemigos(self.jugador.sala)
 
     def terminada(self):
@@ -323,6 +332,7 @@ class EstadoPartida:
         self._gastar_turno(salida.costo)
         self._asignar(self.jugador, "sala", destino)
         self._marcar_rastro()
+        self._conocer_al_entrar(destino)
         # las trampas armadas saltan apenas se entra, antes del siguiente evento
         self._activar_trampas(destino)
         if self.terminada():
@@ -348,6 +358,8 @@ class EstadoPartida:
         self._marcar_rastro()
         self._recordar(puerta, "cerrada")
         puerta.abrir()
+        if self.mapa is not None and puerta.indice is not None:
+            self.mapa.observar_salida(puerta.indice, self.esqueleto.salida_cerrada)
         if puerta.cierre_automatico:
             # solo se cierra este lado; quien ya pasó se queda donde está
             self.agenda.programar(self.tiempo + puerta.cierre_automatico,
@@ -378,6 +390,63 @@ class EstadoPartida:
                                   Evento(EVENTO_REARME_TRAMPA, trampa.instancia))
             if not self.jugador.esta_vivo():
                 self._morir(self.jugador)
+
+    # ------------------------------------------------------ niebla de guerra
+
+    def preparar_mapa(self):
+        """Crea el mapa conocido vacío (iniciar() lo hace; al cargar una partida, el
+        adaptador lo llama antes de restaurarlo)."""
+        if self.esqueleto is not None and self.mapa is None:
+            self.mapa = MapaConocido(self.esqueleto.grafo(), self.historial.registrar_elemento)
+
+    def _conocer_al_entrar(self, id_sala):
+        if self.mapa is None:
+            return
+        indice = self.esqueleto.grafo().indice(id_sala)
+        if indice is None:
+            return
+        cerrada = self.esqueleto.salida_cerrada
+        self.mapa.explorar(indice, cerrada)
+        self.mapa.observar_sala(indice, cerrada)
+        if self.antorcha_hasta is not None:
+            # con la antorcha se ven las vecinas, sin activar a nadie ni revelar contenido
+            self.mapa.explorar_vecinas(indice, cerrada)
+
+    def _observar_si_es_visible(self, puerta):
+        # el jugador ve una salida si está en cualquiera de las dos salas que une
+        if self.mapa is None or puerta.indice is None:
+            return
+        grafo = self.esqueleto.grafo()
+        aqui = grafo.indice(self.jugador.sala)
+        if aqui in (grafo.origen_de_salida[puerta.indice], grafo.destino_de_salida[puerta.indice]):
+            self.mapa.observar_salida(puerta.indice, self.esqueleto.salida_cerrada)
+
+    def paso_hacia(self, destino):
+        """Dirección del siguiente paso de «ir a» hacia la sala 'destino', o None si
+        no hay ruta conocida. Solo usa salas exploradas y salidas que el jugador
+        recuerda abiertas. No cambia nada. Rechaza destinos inválidos sin gastar tiempo."""
+        if self.mapa is None:
+            raise MovimientoInvalido(SIN_MAPA, "la partida no tiene mapa")
+        grafo = self.esqueleto.grafo()
+        objetivo = grafo.indice(destino)
+        if objetivo is None:
+            raise MovimientoInvalido(SALA_NO_DISPONIBLE, f"no existe la sala {destino}")
+        if not self.mapa.esta_explorada(objetivo):
+            raise MovimientoInvalido(SALA_NO_EXPLORADA,
+                                     f"la sala {destino} no está explorada: no sabes cómo llegar")
+        if destino == self.jugador.sala:
+            raise MovimientoInvalido(YA_EN_DESTINO, f"ya estás en la sala {destino}")
+        if self._buscador_viaje is None:
+            self._buscador_viaje = BuscadorRutas(grafo, self.mapa.recuerda_abierta,
+                                                 self.mapa.esta_explorada)
+        buscador = self._buscador_viaje
+        buscador.calcular(objetivo, SIN_COTA)
+        desde = grafo.indice(self.jugador.sala)
+        d = buscador.distancia(desde)
+        if d is None:
+            return None
+        _, _, salida = buscador.primer_paso(desde, d)
+        return grafo.salida_de[salida][1]
 
     def _marcar_rastro(self):
         # cada acción del jugador refresca el rastro de la sala donde queda
@@ -586,6 +655,7 @@ class EstadoPartida:
             if puerta is not None and puerta.esta_abierta():
                 self._recordar(puerta, "cerrada")
                 puerta.cerrar()
+                self._observar_si_es_visible(puerta)
                 self._sucesos.append((SUCESO_PUERTA_CERRADA, int(sala), direccion))
             return None
         enemigo = self._enemigos.buscar(evento.objetivo)
@@ -677,7 +747,7 @@ class EstadoPartida:
         d = buscador.distancia(desde)
         if d is None or d > (enemigo.rango or 0):
             return COSTO_ESPERAR
-        destino, costo = buscador.primer_paso(desde, d)
+        destino, costo, _ = buscador.primer_paso(desde, d)
         self._asignar(enemigo, "sala", grafo.ids[destino])
         return costo
 

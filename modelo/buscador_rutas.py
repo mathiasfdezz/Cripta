@@ -87,8 +87,8 @@ class BuscadorRutas:
         return self._distancia[sala] if self._asentada[sala] == self._epoca else None
 
     def primer_paso(self, desde, d):
-        """(sala vecina, costo de la salida) del primer paso de una ruta de costo d.
-        Entre varias vecinas posibles, la de menor id (= menor índice)."""
+        """(sala vecina, costo, índice de la salida) del primer paso de una ruta de
+        costo d. Entre varias vecinas posibles, la de menor id (= menor índice)."""
         mejor = None
         for destino, costo, salida in self._grafo.salientes[desde]:
             if mejor is not None and destino >= mejor[0]:
@@ -99,5 +99,5 @@ class BuscadorRutas:
                 continue
             resto = self.distancia(destino)
             if resto is not None and costo + resto == d:
-                mejor = (destino, costo)
+                mejor = (destino, costo, salida)
         return mejor

@@ -11,6 +11,7 @@ ALIAS = (
     ("z", "esperar"),
     ("g", "guardar"), ("c", "cargar"),
     ("?", "ayuda"), ("h", "ayuda"), ("help", "ayuda"),
+    ("m", "mapa"),
     ("q", "salir"), ("quit", "salir"), ("exit", "salir"),
 )
 PALABRAS_DIRECCION = (("norte", "n"), ("sur", "s"), ("este", "e"), ("oeste", "o"),
@@ -36,6 +37,7 @@ El menú solo muestra lo que se puede hacer ahora mismo.
 
 Atajos que funcionan siempre
   i  inventario completo        g  guardar la partida      c  cargar la partida
+  m  mapa conocido              ir a <sala>  viajar a una sala explorada
   ?  esta ayuda                 q  salir
 
 Si prefieres escribir los comandos (entre puntos, el tiempo que cuestan):
@@ -47,6 +49,8 @@ Si prefieres escribir los comandos (entre puntos, el tiempo que cuestan):
   sig / ant                           ver el objeto siguiente / anterior
   usar / equipar / soltar             sobre el objeto que estás viendo .... 50 / 50 / 25
   inv [peso|valor|nombre]             ver el inventario, ordenado si se indica
+  mapa  (o m)                         ver las salas exploradas y avistadas
+  ir a <sala>   ej.: ir a 12          viajar a una sala explorada, paso a paso
   deshacer                            usar un pergamino de retroceso
   guardar [nombre] / cargar [nombre]  partidas/<nombre>.sav
 """
@@ -205,12 +209,13 @@ class Consola:
         if not sala.salidas:
             print("   ninguna")
         for salida in sala.salidas:
-            destino = esqueleto.obtener(salida.sala_destino)
-            nombre = destino.nombre if destino is not None else "sala desconocida"
-            linea = (f"   {self._menu.nombre_direccion(salida.direccion):<6} -> {nombre} "
-                     f"({salida.sala_destino})" + self._color(f"   costo {salida.costo}", "tenue"))
+            # solo lo que sabe el jugador: una sala avistada no muestra nombre ni número
+            nombre = self._menu.nombre_conocido(estado, esqueleto, salida.sala_destino)
+            linea = (f"   {self._menu.nombre_direccion(salida.direccion):<6} -> {nombre}"
+                     + self._color(f"   costo {salida.costo}", "tenue"))
             puerta = esqueleto.puerta(sala.id, salida.direccion)
-            if puerta is not None and puerta.esta_cerrada():
+            if puerta is not None and self._menu.puerta_recordada_cerrada(
+                    estado, esqueleto, sala.id, salida.direccion):
                 if estado.jugador.puede_abrir(puerta):
                     nota = self._color("[cerrada: tienes la llave]", "ok")
                 else:
@@ -325,6 +330,32 @@ class Consola:
     def mostrar_ayuda(self):
         print(self._titulo("Cómo jugar"))
         print(AYUDA)
+
+    def mostrar_mapa(self, estado, esqueleto):
+        """Mapa conocido (FR-107): salas exploradas con sus salidas, costos y puertas
+        como las recuerda el jugador, y cuántas salas avistadas hay."""
+        mapa = estado.mapa
+        if mapa is None:
+            print("Esta partida no tiene mapa.")
+            return
+        exploradas = mapa.salas_exploradas()
+        avistadas = mapa.salas_avistadas()
+        print(self._titulo("Mapa conocido", f"{len(exploradas)} exploradas, "
+                                            f"{len(avistadas)} avistadas"))
+        for id_sala in exploradas:
+            sala = esqueleto.obtener(id_sala)
+            marca = self._color("  <- estás aquí", "ok") if id_sala == estado.jugador.sala else ""
+            print(self._color(f" {id_sala:>4}  {sala.nombre}", "negrita") + marca)
+            for salida in sala.salidas:
+                destino = self._menu.nombre_conocido(estado, esqueleto, salida.sala_destino)
+                cerrada = self._menu.puerta_recordada_cerrada(estado, esqueleto, id_sala,
+                                                              salida.direccion)
+                puerta = self._color("  [cerrada]", "alerta") if cerrada else ""
+                print(f"         {salida.direccion} -> {destino}   costo {salida.costo}{puerta}")
+        if avistadas:
+            print(self._color(f" Avistadas sin explorar: {len(avistadas)} (se ven detrás de las "
+                              "salidas que llevan a 'sala sin explorar')", "tenue"))
+        print(self._color(" Para viajar: ir a <número de una sala explorada>", "tenue"))
 
     # ------------------------------------------------------------ final
 

@@ -23,7 +23,8 @@ class PruebasVistaTerreno(unittest.TestCase):
         self.assertIn("costo 60", texto)
         self.assertIn("costo 100", texto)
         etiquetas = [o[0] for o in MenuAcciones().armar(estado, estado.esqueleto)]
-        self.assertIn("Ir al Norte -> Sala 2 (costo 60)", etiquetas)
+        # con la niebla de guerra (002) el nombre de una sala avistada no se muestra
+        self.assertIn("Ir al Norte -> sala sin explorar (costo 60)", etiquetas)
 
     def test_vista_distingue_cazadores(self):
         # FR-011: el cazador se marca distinto de errantes y rastreadores

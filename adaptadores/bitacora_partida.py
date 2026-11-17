@@ -5,6 +5,7 @@ from adaptadores.error_bitacora import ErrorBitacora
 
 MARCA = "# CRIPTA partida"
 FIN_CABECERA = "---"
+COMENTARIO = "#"
 
 
 class BitacoraPartida:
@@ -45,6 +46,10 @@ class BitacoraPartida:
                 nueva.anotar(comando)
         return nueva
 
+    def comentar(self, texto):
+        """Línea que el replay ignora (por ejemplo la orden «ir a», cuyos pasos van aparte)."""
+        self.anotar(f"{COMENTARIO} {texto}")
+
     def anotar(self, comando):
         # se abre y se cierra en cada comando: si el programa se cae, lo jugado queda
         with open(self.ruta, "a", encoding="utf-8") as archivo:
@@ -81,6 +86,7 @@ class BitacoraPartida:
             semilla = int(semilla)
         except ValueError:
             raise ErrorBitacora(f"la semilla de {ruta} no es un número")
-        comandos = [linea for linea in lineas[fin + 1:] if linea.strip()]
+        comandos = [linea for linea in lineas[fin + 1:]
+                    if linea.strip() and not linea.startswith(COMENTARIO)]
         return CabeceraPartida(cripta, version_cripta, version_catalogo, semilla,
                                reproducible), comandos

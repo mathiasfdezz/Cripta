@@ -77,6 +77,9 @@ class Esqueleto:
     def salida_abierta(self, indice):
         return not self._puertas_por_salida[indice].cerrada
 
+    def salida_cerrada(self, indice):
+        return self._puertas_por_salida[indice].cerrada
+
     def tomar_cambios(self):
         """(salidas cuya puerta cambió, desbordado) desde la última llamada. Si
         desbordado es True se anotaron demasiados y hay que suponer que cambió todo."""

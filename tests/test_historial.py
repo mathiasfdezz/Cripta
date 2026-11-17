@@ -68,3 +68,21 @@ class PruebasRelojUnaVezPorIntervalo(unittest.TestCase):
             estado.avanzar_hasta_turno_jugador()
         estado.deshacer()
         self.assertEqual(estado.tiempo, antes + 200)
+
+
+class PruebasCambiosDeLista(unittest.TestCase):
+
+    def test_deshacer_restaura_posiciones_de_una_lista(self):
+        # FR-106: el mapa conocido se revierte posición por posición
+        historial = Historial()
+        estados = [0, 0, 0]
+        historial.abrir_intervalo()
+        historial.registrar_elemento(estados, 1, estados[1])
+        estados[1] = 2
+        historial.registrar_elemento(estados, 2, estados[2])
+        estados[2] = 1
+        historial.registrar_elemento(estados, 1, estados[1])
+        estados[1] = 3
+        self.assertTrue(historial.deshacer())
+        self.assertEqual(estados, [0, 0, 0])
+

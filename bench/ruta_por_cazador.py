@@ -21,7 +21,7 @@ class RutaPorCazador:
         self.salas_asentadas = 0
 
     def decidir(self, desde, objetivo, rango):
-        """(sala vecina, costo de la salida) del paso a dar, o None si espera."""
+        """(sala vecina, costo, índice de la salida) del paso a dar, o None si espera."""
         self._epoca += 1
         epoca = self._epoca
         distancia, primero = self._distancia, self._primero
@@ -58,5 +58,5 @@ class RutaPorCazador:
         paso = primero[objetivo]
         for destino, costo, salida in salientes[desde]:
             if destino == paso and pasable(salida):
-                return destino, costo
+                return destino, costo, salida
         return None

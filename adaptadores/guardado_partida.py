@@ -1,7 +1,7 @@
 import os
 
-from adaptadores.guardado_binario import (NINGUNO, ArchivoGuardado, DatosCabecera, DatosJugador,
-                                          DatosSala, GuardadoIncompatible, guardar)
+from adaptadores.guardado_binario import (NINGUNO, SIN_RECUERDO, ArchivoGuardado, DatosCabecera,
+                                          DatosJugador, DatosSala, GuardadoIncompatible, guardar)
 from dtos.instancia_enemigo import InstanciaEnemigo
 from modelo.estado_partida import EstadoPartida
 from modelo.evento import Evento
@@ -29,12 +29,16 @@ class GuardadoPartida:
                 cursor = posicion
         eventos = [(tiempo, secuencia, evento.tipo, evento.objetivo, evento.dato)
                    for tiempo, secuencia, evento in estado.agenda.pendientes()]
+        estados, recuerdos = b"", b""
+        if estado.mapa is not None:
+            estados = bytes(estado.mapa.estado)
+            recuerdos = bytes(SIN_RECUERDO if r < 0 else r for r in estado.mapa.recuerdo)
         datos_jugador = DatosJugador(
             jugador.vida, jugador.sala, jugador.proximo_evento.tiempo_siguiente, elementos,
             jugador.velocidad, cursor, estado.acciones, estado.enemigos_derrotados,
             estado.puerta_salida_abierta, estado.antorcha_hasta,
             estado.agenda.siguiente_secuencia(), estado.azar.getstate(), eventos,
-            ruta_bitacora, comandos, estado.veneno_hasta, estado.veneno_dano)
+            ruta_bitacora, comandos, estado.veneno_hasta, estado.veneno_dano, estados, recuerdos)
         cabecera = DatosCabecera(datos.id, datos.version, version_catalogo, estado.semilla,
                                  estado.tiempo)
         guardar(ruta, cabecera, datos_jugador, GuardadoPartida._salas(estado))
@@ -116,6 +120,12 @@ class GuardadoPartida:
             evento = Evento(tipo, objetivo, dato)
             estado.agenda.restaurar(tiempo, secuencia, evento, guardado.siguiente_secuencia)
             estado.enlazar_evento_restaurado(evento)
+        estado.preparar_mapa()
+        try:
+            estado.mapa.restaurar(list(guardado.mapa_estados),
+                                  [-1 if r == SIN_RECUERDO else r for r in guardado.mapa_recuerdos])
+        except ValueError as error:
+            raise GuardadoIncompatible(str(error))
         return estado, guardado.bitacora, guardado.comandos
 
     @staticmethod

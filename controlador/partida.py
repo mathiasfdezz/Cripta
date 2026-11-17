@@ -24,7 +24,7 @@ from modelo.registro_puntaje import RegistroPuntaje
 DIRECCIONES = ("N", "S", "E", "O")
 CRITERIOS_INVENTARIO = ("peso", "valor", "nombre")
 # guardar y cargar no van a la bitácora: el replay no debe tocar archivos
-SIN_BITACORA = ("guardar", "cargar", "ayuda", "inv")
+SIN_BITACORA = ("guardar", "cargar", "ayuda", "inv", "mapa", "ir")
 
 
 class ControladorPartida:
@@ -47,6 +47,7 @@ class ControladorPartida:
         self._nuevos = []
         self._avisado_sin_presupuesto = False
         self._uso = UsoDeFichas(cache)
+        self.ultimo_viaje = None   # (destino, pasos, motivo) del último «ir a»
         self.esqueleto = self._cargar_esqueleto()
         jugador = Jugador(datos.sala_inicial, datos.jugador, Inventario(datos.inventario_max))
         self.estado = EstadoPartida(semilla, jugador, self.esqueleto, obtener_ficha=cache.obtener)
@@ -149,6 +150,12 @@ class ControladorPartida:
                 self._cargar(argumento or "guardado")
             elif orden == "ayuda":
                 self.vista.mostrar_ayuda()
+            elif orden == "mapa":
+                self.vista.mostrar_mapa(self.estado, self.esqueleto)
+            elif orden == "ir":
+                # «ir a 12»: cada paso se anota en la bitácora como un movimiento
+                destino = partes[2] if len(partes) > 2 and argumento.lower() == "a" else argumento
+                self._ir_a(destino)
             else:
                 self._avisar(f"No entiendo '{texto}'. Escribe ayuda para ver los comandos.")
         except MovimientoInvalido as error:
@@ -174,6 +181,52 @@ class ControladorPartida:
             self._avisar("¡Llegaste a la salida! Ganaste.")
             return
         self._despues_de_actuar()
+
+    def _ir_a(self, texto_destino):
+        """Viaje automático (FR-108 a FR-113): un movimiento ordinario por paso, la ruta
+        se recalcula antes de cada uno y se para por las razones de FR-112."""
+        try:
+            destino = int(texto_destino)
+        except (TypeError, ValueError):
+            raise MovimientoInvalido("ir_a", "indica el número de una sala explorada: ir a <sala>")
+        estado = self.estado
+        pasos = 0
+        motivo = None
+        while motivo is None:
+            if pasos > 0 and estado.jugador.sala == destino:
+                motivo = f"llegaste a la sala {destino}"
+                break
+            try:
+                direccion = estado.paso_hacia(destino)
+            except MovimientoInvalido:
+                if pasos == 0:
+                    raise
+                motivo = "el destino dejó de ser válido"
+                break
+            if direccion is None:
+                motivo = "no queda una ruta conocida por puertas que recuerdes abiertas"
+                break
+            if pasos == 0 and self._bitacora_partida is not None:
+                self._bitacora_partida.comentar(f"ir a {destino}")
+            vida = estado.jugador.vida
+            try:
+                self._mover(direccion)
+            except MovimientoInvalido as error:
+                motivo = f"el siguiente paso no se pudo dar ({error})"
+                break
+            pasos += 1
+            if self._bitacora_partida is not None:
+                self._bitacora_partida.anotar(direccion.lower())
+                self._comandos += 1
+            if estado.terminada():
+                motivo = "la partida terminó"
+            elif estado.jugador.sala != destino and estado.enemigos_en_sala(estado.jugador.sala):
+                motivo = "entraste a una sala con enemigos"
+            elif estado.jugador.vida < vida:
+                motivo = "recibiste daño"
+        self.ultimo_viaje = (destino, pasos, motivo)
+        self._avisar(f"Viaje a la sala {destino}: {pasos} paso{'s' if pasos != 1 else ''}; "
+                     f"se detuvo porque {motivo}.")
 
     def _despues_de_actuar(self):
         if self.estado.terminada():
