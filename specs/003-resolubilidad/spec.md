@@ -8,6 +8,16 @@
 
 **Input**: User description: "Capacidad 'verificación de resolubilidad'. Reglas: @docs/enunciado_parte2.md §3.5, §4.2, §4.3, §5.4, §7.3 y Apéndice B (sección Resolubilidad). Antes de iniciar una partida el programa determina si la cripta puede ganarse usando el esqueleto y la ubicación de las llaves (GET /criptas/<id>/llaves, que cuenta en el presupuesto y se persiste validada por versión). Supuestos: se atraviesa cualquier salida abierta y cualquier salida cerrada cuya llave ya se obtuvo; las llaves no se consumen; todo enemigo puede ser derrotado; una llave que suelta un enemigo se obtiene en la sala donde ese enemigo inicia; trampas y cierres automáticos no bloquean. Resoluble: partiendo de la sala inicial se obtiene llave_salida y se llega a sala_salida por una puerta que la requiere. Si es resoluble, se informa un orden determinista de obtención de llaves donde cada llave aparece después de las necesarias para alcanzarla. Si no: llaves no obtenibles, puertas de la frontera bloqueada con la llave que pide cada una y dónde está cada llave, y el ciclo concreto si una llave está detrás de puertas que solo ella abre, directamente o por una cadena de llaves. Sin resolubilidad la partida no inicia salvo con --forzar. --verificar <cripta> solo verifica, sin la vista. La interfaz muestra el reporte al iniciar. Límite: 200 ms en la cripta publicada más grande; el costo debe crecer de forma aproximadamente lineal con salas, salidas y llaves. Incluye los 4 casos del Apéndice B. Los requisitos se numeran desde FR-201."
 
+## Clarifications
+
+### Session 2026-11-17
+
+- Q: ¿Qué puertas son «de la frontera»? → A: Las salidas cerradas cuyo origen es alcanzable y cuyo destino no lo es. Una puerta cerrada hacia una sala que ya es alcanzable por otro camino no bloquea nada y no se lista.
+- Q: ¿Qué significa que una llave «está detrás» de ciertas puertas? → A: Se toma la ruta desde la región alcanzable hasta la sala de la llave que cruza la menor cantidad de puertas cerradas (a igual cantidad, la que el recorrido encuentra primero: orden N, S, E, O y salas de menor id). Las llaves de esas puertas son de las que depende. Hay ciclo cuando, siguiendo esas dependencias, se vuelve a la misma llave.
+- Q: Si hay varios ciclos, ¿cuál se informa? → A: El primero que se encuentra recorriendo las llaves no obtenibles en orden de id. Basta uno concreto; el resto de llaves no obtenibles se lista igual.
+- Q: ¿El orden informado incluye llaves que no hacen falta para salir? → A: Sí: es el orden en que se obtienen todas las llaves alcanzables; cumple que cada una aparece después de las que necesita.
+- Q: ¿Qué hace `--verificar` con el presupuesto? → A: Pide solo los datos de la cripta, el esqueleto y la ubicación de llaves; todo cuenta en el presupuesto y queda guardado para la partida.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Saber antes de jugar si la cripta se puede ganar (Priority: P1)
