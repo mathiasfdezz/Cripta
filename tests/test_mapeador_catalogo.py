@@ -43,6 +43,25 @@ class PruebasMapeadorCatalogo(unittest.TestCase):
                 {"id": "ent_x", "nombre": "X", "clase": "enemigo", "vida_max": 5, "ataque": 1,
                  "defensa": 0, "velocidad": 100, "comportamiento": "volador"})
 
+    # FR-004: el cazador trae rango
+
+    def test_cazador_con_rango(self):
+        ficha = ficha_catalogo_desde_json(
+            {"id": "ent_sabueso_oseo", "nombre": "Sabueso óseo", "clase": "enemigo",
+             "vida_max": 18, "ataque": 6, "defensa": 2, "velocidad": 120,
+             "comportamiento": "cazador", "rango": 600, "suelta": []})
+        self.assertEqual(ficha.comportamiento, "cazador")
+        self.assertEqual(ficha.rango, 600)
+
+    def test_cazador_sin_rango_es_error_de_datos(self):
+        for malo in (None, -1, "600", 6.5):
+            datos = {"id": "ent_c", "nombre": "C", "clase": "enemigo", "vida_max": 5, "ataque": 1,
+                     "defensa": 0, "velocidad": 100, "comportamiento": "cazador"}
+            if malo is not None:
+                datos["rango"] = malo
+            with self.subTest(rango=malo), self.assertRaises(ErrorDatos):
+                ficha_catalogo_desde_json(datos)
+
 
 if __name__ == "__main__":
     unittest.main()

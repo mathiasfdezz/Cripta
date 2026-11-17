@@ -4,6 +4,7 @@ from dtos.sala import Sala
 from dtos.salida import Salida
 
 DIRECCIONES = ("N", "S", "E", "O")
+COSTO_POR_DEFECTO = 100
 
 
 def pagina_salas_desde_json(datos):
@@ -41,4 +42,14 @@ def _salida(direccion, datos, donde):
         cerrada=bool(datos.get("cerrada")),
         llave=datos.get("llave"),
         cierre_automatico=datos.get("cierre_automatico"),
+        costo=_costo(datos.get("costo"), donde),
     )
+
+
+def _costo(valor, donde):
+    # ausente o null vale 100; cualquier otra cosa tiene que ser un entero >= 1
+    if valor is None:
+        return COSTO_POR_DEFECTO
+    if isinstance(valor, bool) or not isinstance(valor, int) or valor < 1:
+        raise ErrorDatos(f"{donde}: el costo debe ser un entero mayor o igual que 1, llegó {valor!r}")
+    return valor

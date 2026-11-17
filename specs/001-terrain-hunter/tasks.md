@@ -16,12 +16,12 @@
 
 **Purpose**: Actualización de DTOs y adaptadores para recibir los nuevos campos del servicio/esqueleto.
 
-- [ ] T001 [P] Actualizar `dtos/salida.py` agregando el campo `costo: int = 100` con validación de entero >= 1 (FR-001).
-- [ ] T002 [P] Actualizar `dtos/ficha_catalogo.py` agregando el campo opcional `rango: int | None = None` y permitiendo `comportamiento == "cazador"` (FR-004).
-- [ ] T003 Actualizar `adaptadores/mapeadores/mapeador_salas.py` para deserializar `costo` (entero >= 1, 100 si no se declara o es `null`) en las salidas (FR-001).
-- [ ] T003a [P] Escribir pruebas en `tests/test_mapeador_salas.py`: costo ausente o `null` da 100; costo 0, negativo o no entero es un error de datos (FR-001).
-- [ ] T004 Actualizar `adaptadores/mapeadores/mapeador_catalogo.py` para mapear `rango` y comportamiento `cazador` desde el catálogo JSON (FR-004).
-- [ ] T004a [P] Escribir pruebas en `tests/test_mapeador_catalogo.py`: un cazador sin `rango` es un error de datos; con `rango` se mapea (FR-004).
+- [X] T001 [P] Actualizar `dtos/salida.py` agregando el campo `costo: int = 100` con validación de entero >= 1 (FR-001).
+- [X] T002 [P] Actualizar `dtos/ficha_catalogo.py` agregando el campo opcional `rango: int | None = None` y permitiendo `comportamiento == "cazador"` (FR-004).
+- [X] T003 Actualizar `adaptadores/mapeadores/mapeador_salas.py` para deserializar `costo` (entero >= 1, 100 si no se declara o es `null`) en las salidas (FR-001).
+- [X] T003a [P] Escribir pruebas en `tests/test_mapeador_salas.py`: costo ausente o `null` da 100; costo 0, negativo o no entero es un error de datos (FR-001).
+- [X] T004 Actualizar `adaptadores/mapeadores/mapeador_catalogo.py` para mapear `rango` y comportamiento `cazador` desde el catálogo JSON (FR-004).
+- [X] T004a [P] Escribir pruebas en `tests/test_mapeador_catalogo.py`: un cazador sin `rango` es un error de datos; con `rango` se mapea (FR-004).
 
 ---
 
