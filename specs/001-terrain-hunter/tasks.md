@@ -2,6 +2,7 @@
 
 **Input**: Design documents from `/specs/001-terrain-hunter/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`)
 **Requirements Coverage**: FR-001 a FR-015, PR-001.
+**Revisión**: corregido tras `/speckit-analyze` (ver analisis.md).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -18,7 +19,9 @@
 - [ ] T001 [P] Actualizar `dtos/salida.py` agregando el campo `costo: int = 100` con validación de entero >= 1 (FR-001).
 - [ ] T002 [P] Actualizar `dtos/ficha_catalogo.py` agregando el campo opcional `rango: int | None = None` y permitiendo `comportamiento == "cazador"` (FR-004).
 - [ ] T003 Actualizar `adaptadores/mapeadores/mapeador_salas.py` para deserializar `costo` (entero >= 1, 100 si no se declara o es `null`) en las salidas (FR-001).
+- [ ] T003a [P] Escribir pruebas en `tests/test_mapeador_salas.py`: costo ausente o `null` da 100; costo 0, negativo o no entero es un error de datos (FR-001).
 - [ ] T004 Actualizar `adaptadores/mapeadores/mapeador_catalogo.py` para mapear `rango` y comportamiento `cazador` desde el catálogo JSON (FR-004).
+- [ ] T004a [P] Escribir pruebas en `tests/test_mapeador_catalogo.py`: un cazador sin `rango` es un error de datos; con `rango` se mapea (FR-004).
 
 ---
 
@@ -26,8 +29,8 @@
 
 **Purpose**: Construcción de adyacencias dirigidas, resolución de índices densos en $O(V+E)$ y soporte de costos en el esqueleto.
 
-- [ ] T005 Actualizar `modelo/puerta.py` para almacenar `costo: int` (FR-001).
-- [ ] T006 Modificar `modelo/esqueleto.py` para resolver al cargar la cripta los índices densos `[0, V-1]` de origen y destino de cada salida, y construir la lista de adyacencia de **salidas entrantes** por sala con sus costos y referencias de puertas en $O(V+E)$ (FR-001, FR-008).
+- [ ] T005 Actualizar `modelo/puerta.py` para almacenar `costo: int` y avisar al esqueleto el índice de su salida cada vez que cambia su estado, también al deshacer o cargar (FR-001, FR-009).
+- [ ] T006 Crear `modelo/grafo_cripta.py` (`GrafoCripta`) y modificar `modelo/esqueleto.py` para numerar las salidas, resolver los índices densos `[0, V-1]` y construir las listas de **salidas entrantes** y salientes con su costo e índice de salida en $O(V+E)$ (FR-001, FR-008).
 
 ---
 
@@ -42,8 +45,8 @@
 - [ ] T010 [P] [US1] Escribir prueba unitaria `test_costos_acciones_no_cambian` en `tests/test_movimiento_terreno.py` citando FR-012: verificar que atacar/esperar (costo 100), usar objeto (50), recoger/soltar (25) y abrir puerta (50) conservan sus costos base.
 
 ### Implementation for User Story 1
-- [ ] T011 [US1] Actualizar la lógica de movimiento en `modelo/partida.py` y `controlador/partida.py` para que el costo de la acción sea `salida.costo` y el intervalo programado sea `max(1, costo_salida * 100 // velocidad)` (FR-002, FR-003).
-- [ ] T012 [US1] Adaptar los movimientos de errantes y rastreadores en `modelo/enemigo.py` para usar el intervalo calculado por el terreno conservando sus comportamientos (FR-003).
+- [ ] T011 [US1] Actualizar `mover_jugador` en `modelo/estado_partida.py` para que el costo de la acción sea `salida.costo` y el intervalo programado sea `max(1, costo_salida * 100 // velocidad)` (FR-002, FR-003).
+- [ ] T012 [US1] Adaptar `_comportarse` y `programar_accion` en `modelo/estado_partida.py` (y la vecindad de `modelo/rastro.py`) para que errantes y rastreadores usen el costo de la salida que atraviesan, conservando sus comportamientos (FR-003, FR-012).
 
 ---
 
@@ -62,9 +65,10 @@
 - [ ] T020 [P] [US2] Escribir prueba unitaria `test_cazador_puerta_cerrada_unilateral` en `tests/test_cazador.py` citando FR-005 y FR-008: una puerta cerrada solo en un sentido bloquea el paso en ese sentido pero no en el inverso.
 
 ### Implementation for User Story 2
-- [ ] T021 [US2] Implementar `modelo/rastreador_cazador.py` con Dijkstra artesanal desde el jugador usando las salidas entrantes, sistema de épocas para reinicio $O(1)$ sin asignación global y detención al rango máximo acotado a $O(R + E_R \log R)$ (FR-005, FR-008, PR-001).
-- [ ] T022 [US2] Implementar la lógica de invalidación y caché en `modelo/rastreador_cazador.py` activada ante movimientos del jugador, aperturas/cierres de puertas o cambios en el rango máximo de cazadores activos (FR-008, FR-009).
-- [ ] T023 [US2] Implementar el comportamiento `cazador` en `modelo/enemigo.py` y `controlador/partida.py`: 1. Atacar si comparte sala; 2. Consultar ruta mínima en `RastreadorCazador`; 3. Esperar (costo 100) si no hay ruta o $d > rango$; 4. Moverse a la vecina de costo $d$ desempatando por menor ID (FR-004, FR-005, FR-006, FR-007, FR-014).
+- [ ] T021 [US2] Implementar `modelo/buscador_rutas.py` (`BuscadorRutas`) con Dijkstra artesanal desde el jugador usando las salidas entrantes, sistema de épocas para reinicio $O(1)$ sin asignación global y detención en la cota, acotado a $O(R + E_R \log R)$ (FR-005, FR-008, PR-001).
+- [ ] T022 [US2] Implementar la invalidación selectiva en `modelo/buscador_rutas.py`: movimiento del jugador, cambio de una salida que entra a una sala asentada o cota mayor que la usada (FR-008, FR-009).
+- [ ] T023 [US2] Implementar el comportamiento `cazador` en `modelo/enemigo.py` (constante y `rango`) y `modelo/estado_partida.py`: 1. Atacar si comparte sala; 2. Consultar el costo mínimo en `BuscadorRutas`; 3. Esperar (costo 100) si no hay ruta o $d > rango$; 4. Moverse a la vecina de costo $d$ desempatando por menor ID, con el costo de esa salida (FR-004, FR-005, FR-006, FR-007, FR-014).
+- [ ] T023a [P] [US2] Escribir prueba `test_reutilizar_equivale_a_calcular_desde_cero` en `tests/test_cazador.py` citando FR-009: en una partida con puertas que se abren y cierran, cada decisión con el mapa reutilizado coincide con la de un buscador nuevo.
 
 ---
 
@@ -86,7 +90,7 @@
 
 **Purpose**: Verificación de presupuestos de tiempo y análisis empírico para DECISIONES.md.
 
-- [ ] T028 Implementar módulo `bench/bench_cazadores.py` con escenarios reproducibles por semilla para:
+- [ ] T028 Implementar módulo `bench/bench_cazadores.py` (criptas sintéticas deterministas por semilla en `bench/cripta_sintetica.py`) con escenarios reproducibles por semilla para:
   1. Cálculo individual frente a compartido (con 10, 50 y decenas de cazadores) (PR-001).
   2. Recalcular siempre frente a caché con invalidación (PR-001).
   3. Puertas estables frente a puertas inestables (frecuentes aperturas/cierres) (PR-001).

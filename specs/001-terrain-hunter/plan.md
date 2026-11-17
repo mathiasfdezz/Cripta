@@ -14,7 +14,9 @@
 - **Dependencies**:
     - `estructuras.min_heap.MinHeap`: Reutilizado para Dijkstra.
     - `modelo.agenda_eventos.AgendaEventos`: Reutilizado para reescalado de tiempo (FR-013).
-    - `modelo.esqueleto.Esqueleto`: Modificado para almacenar costos y construir la lista de salidas entrantes en $O(V + E)$ al inicio.
+    - `modelo.esqueleto.Esqueleto`: Modificado para numerar las salidas y anotar qué puertas cambiaron.
+    - `modelo.grafo_cripta.GrafoCripta` (nuevo): índices densos, salidas entrantes y salientes con costo, construido en $O(V + E)$ al inicio.
+    - `modelo.buscador_rutas.BuscadorRutas` (nuevo): Dijkstra acotado desde el jugador con épocas e invalidación selectiva.
 
 ## Constitution Check
 
@@ -33,13 +35,13 @@
 1. **Dijkstra Individual**: Cada cazador realiza su propia búsqueda.
 2. **Dijkstra Compartido (Caché con Salidas Entrantes)**: Un único cálculo desde el jugador utilizando la lista de salidas entrantes pre-calculadas en $O(V + E)$ al cargar la cripta.
 
-**Decisión**: Dijkstra Compartido con Salidas Entrantes. El recorrido parte del jugador y explora las salidas entrantes (sentido inverso) evaluando el estado real de cada puerta. 
+**Decisión**: Dijkstra Compartido con Salidas Entrantes. El recorrido parte del jugador y explora las salidas entrantes (sentido inverso) evaluando el estado real de cada puerta. La cota es el mayor rango de los cazadores conocidos.
 **Complejidad**: $O(R + E_R \log R)$, donde $R$ es el número de salas dentro del rango y $E_R$ son las salidas entrantes en dichas salas, evitando inicializaciones globales gracias a las épocas.
 
 #### 2. Estrategia de Invalidación y Equivalencia
 **Problema**: Reutilizar el cálculo previo sin alterar la decisión de "calcular desde cero".
 **Decisión**: Caché con Invalidación.
-**Justificación**: La apertura/cierre de puertas y el movimiento del jugador invalidan el mapa por modificar la conectividad o el origen. Los cambios de sala de otros actores o modificaciones de velocidad no alteran la topología, por lo que no invalidan el mapa. Reutilizarlo produce exactamente el mismo resultado que un cálculo desde cero, cumpliendo §3.2.
+**Justificación**: El movimiento del jugador invalida el mapa (cambia el origen). La apertura o cierre de la salida u→x invalida solo si x quedó asentada en el último cálculo (research.md §2 tiene la demostración); una puerta lejana no obliga a recalcular. Los cambios de sala de otros actores, las muertes y los cambios de velocidad no alteran la topología. Reutilizarlo produce exactamente el mismo resultado que un cálculo desde cero, cumpliendo §3.2; las pruebas lo comparan en cada turno contra un cálculo desde cero.
 
 **Casos Especiales de Prueba**: Se incluirán criptas de prueba con salidas de un solo sentido y puertas cerradas unilateralmente.
 
@@ -49,10 +51,16 @@
 
 ---
 
+## Mediciones Planificadas
+
+- Cripta de referencia (cripta-06, 300 salas, 36 cazadores en su contenido) con todos los cazadores activos: ciclo entre dos decisiones del jugador, límite 20 ms (PR-001).
+- Cripta sintética de 900 salas con 60 cazadores, rango 300 y rango 2400: compartido frente a individual.
+- Puertas estables frente a inestables: reutilizar frente a recalcular siempre.
+
 ## Tareas Iniciales
 
-1. Actualizar `Esqueleto` y `Puerta` para gestionar costos y construir el índice de salidas entrantes ($O(V+E)$).
-2. Implementar `RastreadorCazador` con Dijkstra acotado ($R, E_R$), sistema de épocas y manejo de salidas dirigidas.
-3. Integrar la invalidación del `RastreadorCazador` en el modelo.
+1. Actualizar `Esqueleto` y `Puerta` para numerar las salidas, gestionar costos y anotar cambios de puertas; construir `GrafoCripta` ($O(V+E)$).
+2. Implementar `BuscadorRutas` con Dijkstra acotado ($R, E_R$), sistema de épocas y manejo de salidas dirigidas.
+3. Integrar la invalidación selectiva del `BuscadorRutas` en el modelo.
 4. Implementar el comportamiento `cazador` en los enemigos.
 5. Añadir escenarios de benchmark en `bench/bench_cazadores.py`, incluyendo criptas con salidas de un solo sentido y puertas cerradas en un solo sentido.
