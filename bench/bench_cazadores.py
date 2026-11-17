@@ -70,12 +70,15 @@ def _cerca(azar, objetivo, lado, radio):
 
 def comparar_invalidacion():
     print("\n== Invalidación: reutilizar el cálculo frente a recalcular siempre "
-          "(30 cazadores, rango 2400, %d rondas) ==" % RONDAS)
-    print("%-22s %-14s %12s %10s %12s" % ("puertas", "estrategia", "ms/ronda", "cálculos",
-                                         "reutilizados"))
-    for nombre, cambios_por_ronda in (("estables (1 c/50)", 0.02), ("inestables (8/ronda)", 8)):
+          "(30 cazadores, %d rondas) ==" % RONDAS)
+    print("%-6s %-22s %-18s %12s %10s %12s" % ("rango", "puertas", "estrategia", "ms/ronda",
+                                              "cálculos", "reutilizados"))
+    for rango, nombre, cambios_por_ronda in ((2400, "estables (1 c/50)", 0.02),
+                                             (2400, "inestables (8/ronda)", 8),
+                                             (300, "estables (1 c/50)", 0.02),
+                                             (300, "inestables (8/ronda)", 8)):
         resultados = []
-        for estrategia in ("reutilizar", "recalcular"):
+        for estrategia in ("reutilizar", "cualquier puerta", "recalcular"):
             esqueleto = crear_esqueleto(LADO, LADO, semilla=5, con_costos=True)
             grafo = esqueleto.grafo()
             azar = random.Random(17)
@@ -96,21 +99,26 @@ def comparar_invalidacion():
                 inicio = time.perf_counter()
                 for i, desde in enumerate(cazadores):
                     if estrategia == "reutilizar":
-                        buscador.asegurar(jugador, 2400, *esqueleto.tomar_cambios())
+                        buscador.asegurar(jugador, rango, *esqueleto.tomar_cambios())
+                    elif estrategia == "cualquier puerta":
+                        # el plan original: cualquier cambio de puerta invalida todo
+                        cambios, desbordado = esqueleto.tomar_cambios()
+                        buscador.asegurar(jugador, rango, (), desbordado or bool(cambios))
                     else:
-                        buscador.calcular(jugador, 2400)
+                        buscador.calcular(jugador, rango)
                     d = buscador.distancia(desde)
-                    if d is not None and desde != jugador:
+                    if d is not None and d <= rango and desde != jugador:
                         paso = buscador.primer_paso(desde, d)
                         cazadores[i] = paso[0]
                 total += time.perf_counter() - inicio
                 decisiones.append(tuple(cazadores))
             resultados.append(decisiones)
-            print("%-22s %-14s %12.3f %10d %12d" % (nombre, estrategia, total * 1000 / RONDAS,
-                                                    buscador.calculos, buscador.reutilizados))
-        if resultados[0] != resultados[1]:
+            print("%-6d %-22s %-18s %12.3f %10d %12d" % (rango, nombre, estrategia,
+                                                         total * 1000 / RONDAS, buscador.calculos,
+                                                         buscador.reutilizados))
+        if resultados[0] != resultados[1] or resultados[0] != resultados[2]:
             raise AssertionError("reutilizar cambió alguna decisión")
-    print("(en los dos casos las decisiones de todas las rondas son idénticas)")
+    print("(en todos los casos las decisiones de todas las rondas son idénticas)")
 
 
 def _cuantos(azar, promedio):

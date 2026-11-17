@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from estructuras.vector_ordenado import VectorOrdenado
 
 ANTIGUEDAD_MAXIMA = 400   # un rastro de 400 o más ya no sirve
@@ -20,6 +22,19 @@ class Rastro:
     def __init__(self, esqueleto):
         self._esqueleto = esqueleto
         self._salas = VectorOrdenado()   # id de sala -> _RegistroSala
+
+    def __deepcopy__(self, memo):
+        """Solo el tiempo de cada sala es estado; la vecindad enlazada es un atajo que
+        la copia vuelve a armar al usarla. Copiarla recorrería todo el mapa enlazado."""
+        copia = Rastro.__new__(Rastro)
+        memo[id(self)] = copia
+        copia._esqueleto = deepcopy(self._esqueleto, memo)
+        copia._salas = VectorOrdenado()
+        for id_sala, registro in self._salas:
+            nuevo = _RegistroSala(id_sala)
+            nuevo.tiempo = registro.tiempo
+            copia._salas.insertar(id_sala, nuevo)
+        return copia
 
     def marcar(self, id_sala, tiempo):
         self._registro(id_sala).tiempo = tiempo

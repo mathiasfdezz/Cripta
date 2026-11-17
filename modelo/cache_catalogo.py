@@ -45,6 +45,10 @@ class CacheCatalogo:
 
     # ------------------------------------------------------------ version
 
+    def __deepcopy__(self, memo):
+        # la caché es infraestructura: una copia del estado de la partida usa la misma
+        return self
+
     def validar_version(self, version_actual):
         """Compara con la version global del catalogo. Si el disco guarda otra,
         descarta lo persistido. Devuelve True si se conservo."""

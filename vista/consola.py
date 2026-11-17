@@ -1,6 +1,7 @@
 from modelo.enemigo import CAZADOR
 from vista.estilo import Estilo
 from vista.menu_acciones import ABRIR, ATACAR, MOVER, OBJETO, RECOGER, MenuAcciones
+from vista.texto_historia import lineas_historia
 from vista.texto_resolubilidad import lineas_resolubilidad
 
 ANCHO = 72
@@ -52,6 +53,8 @@ Si prefieres escribir los comandos (entre puntos, el tiempo que cuestan):
   inv [peso|valor|nombre]             ver el inventario, ordenado si se indica
   mapa  (o m)                         ver las salas exploradas y avistadas
   ir a <sala>   ej.: ir a 12          viajar a una sala explorada, paso a paso
+  historia <t> / historia #k          cómo estaba la partida en el instante t
+                                      o antes de tu acción número k
   deshacer                            usar un pergamino de retroceso
   guardar [nombre] / cargar [nombre]  partidas/<nombre>.sav
 """
@@ -331,6 +334,14 @@ class Consola:
     def mostrar_ayuda(self):
         print(self._titulo("Cómo jugar"))
         print(AYUDA)
+
+    def mostrar_historia(self, estado, que, instante):
+        """FR-303: resumen del estado de la partida en un momento pasado."""
+        lineas = lineas_historia(estado, que, instante)
+        print()
+        print(self._titulo(lineas[0]))
+        for linea in lineas[1:]:
+            print(linea)
 
     def mostrar_resolubilidad(self, reporte, cripta_id):
         """FR-209: el reporte de resolubilidad antes del primer turno."""

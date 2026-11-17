@@ -12,6 +12,8 @@ Todas las mediciones se tomaron en un Intel Core i5-10400 (2.90 GHz), Windows 11
 
 Una nota sobre el formato: cada sección sigue los seis puntos de la sección 8 (problema, alternativas, decisión, complejidad, evidencia y límites).
 
+**Segunda parte.** Las secciones de la segunda parte están al final, bajo «Segunda parte», una por problema de la sección 5 de su enunciado (5.1 a 5.6). Cada una enlaza a la especificación y al plan de spec-kit de los que viene e indica si la decisión final coincide con el plan. Las mediciones de la segunda parte se tomaron en la misma máquina, el 17 de noviembre de 2026, con `python main.py --bench`; la cripta de referencia es la más grande del paquete offline (cripta-06, 300 salas, 760 salidas, 75 enemigos de los cuales 36 son cazadores).
+
 ---
 
 ## 4.1 Qué ocurre a continuación (agenda de eventos)
@@ -660,3 +662,344 @@ Explorar toda la cripta grande costó entre 25 y 26 solicitudes, de ellas 15 de 
 11. **El límite de 20 ms por ciclo.** Con cientos de enemigos activos, el ciclo entre dos decisiones del jugador pasaba de 20 ms. Optimizamos el motor: el reloj se anota una sola vez por acción en el historial, el heap mueve un "hueco" en vez de intercambiar en cada nivel, y le pedimos al recolector de basura de Python que deje de revisar lo que vive toda la partida (gc.freeze). Con eso cumplimos siempre hasta unos 400 enemigos activos a la vez (alrededor de 500 eventos por ciclo). Con más, los peores casos se ven afectados también por el sistema operativo, y lo dejamos documentado como límite conocido.
 
 12. **El tiempo.** Todo esto se hizo en pocas semanas y en paralelo con otras materias, así que tuvimos que priorizar: primero lo que pide la rúbrica, después las mejoras. Lo que no alcanzamos a implementar (como dormir a los enemigos que no tienen nada que hacer, para bajar más el tiempo por ciclo) quedó anotado como mejora futura.
+
+---
+
+# Segunda parte
+
+Cuatro capacidades nuevas, cada una con su especificación, plan, tareas y análisis en `specs/`. La regla editorial no cambió: el enunciado describe operaciones y propiedades, y la estructura la elegimos y la medimos nosotros.
+
+Una idea atraviesa las cuatro: **índices densos**. `GrafoCripta` (capacidad 001) numera las salas de 0 a V−1 en orden de id y las salidas de 0 a E−1, una sola vez y en O(V + E). Desde ahí, las distancias del cazador, el mapa conocido, la verificación de resolubilidad y los puntos de control usan listas indexadas por ese número en vez de buscar por id. Como el orden de los índices es el de los ids, «la vecina de menor id» es «la vecina de menor índice», y el desempate no necesita comparar ids.
+
+---
+
+## P2 5.1 La ruta más barata del cazador
+
+Especificación: [specs/001-terrain-hunter/spec.md](specs/001-terrain-hunter/spec.md) · Plan: [plan.md](specs/001-terrain-hunter/plan.md) · Análisis: [analisis.md](specs/001-terrain-hunter/analisis.md)
+
+### Problema
+
+Cada cazador, en su turno, necesita el costo mínimo d desde su sala hasta la del jugador por salidas abiertas y, si d ≤ rango, el primer paso hacia la vecina de menor id entre las que inician una ruta de costo d. Los costos no son uniformes, así que contar salas no sirve. En la cripta de referencia hay 36 cazadores, y todos persiguen al mismo objetivo.
+
+### Alternativas consideradas
+
+1. **BFS por cantidad de salas.** Es lo que hacía falta en la primera parte. Con costos distintos da rutas equivocadas (el Apéndice B tiene un caso para eso).
+2. **Un Dijkstra por cazador, hacia adelante** (`bench/ruta_por_cazador.py`): parte del cazador, se corta en su rango y se detiene al sacar la sala del jugador. Para el desempate, cada sala lleva la menor vecina inicial entre todas sus rutas mínimas.
+3. **Un Dijkstra compartido, hacia atrás** desde el jugador por las salidas que entran a cada sala, cortado en el mayor rango de los cazadores. Da la distancia de todas las salas al jugador de una vez.
+
+### Decisión
+
+La alternativa 3 (`modelo/buscador_rutas.py`), con el `MinHeap` propio de la primera parte y **épocas**: cada lista (distancia, vista, asentada) tiene una posición por sala, y una posición solo vale si su época es la del cálculo actual. Así no hay que limpiar V posiciones por cálculo y el costo depende de la región dentro de la cota, no de la cripta.
+
+El desempate se resuelve después del cálculo, no dentro del heap: para el cazador en u se miran sus salidas abiertas u→v y se elige el menor v con costo(u,v) + dist(v) = d. Todas esas v tienen dist(v) < d ≤ cota, así que están asentadas y su distancia es exacta. El resultado no depende del orden en que el heap resuelva empates, que es justo lo que pide §3.2.
+
+**¿Coincide con el plan?** Sí: es la decisión del plan de Abraham (Dijkstra compartido por salidas entrantes con épocas). El análisis cambió dos cosas que no son de algoritmo: el nombre (`RastreadorCazador` chocaba con el rastreador de la primera parte) y que las aristas guarden el número de la salida en vez del objeto `Puerta`, para que la línea de tiempo pudiera copiar el estado.
+
+### Análisis de complejidad
+
+| Operación | Costo |
+|---|---|
+| Armar `GrafoCripta` | O(V + E), una vez por cripta |
+| Cálculo compartido | O(R + E_R log R), R = salas a distancia ≤ cota |
+| Decisión de un cazador con el cálculo hecho | O(salidas de su sala) |
+| Alternativa: un cálculo por cazador | O(R_i + E_i log R_i) por cazador |
+
+### Evidencia empírica
+
+Cuadrícula sintética de 900 salas con costos de 20 a 300, cazadores cerca del jugador, 25 posiciones del jugador por fila (ms por ronda de decisiones; en cada ronda se verifica que las dos alternativas decidan exactamente lo mismo):
+
+| Cazadores | Rango | Compartido | Uno por cazador | Uno por cazador / compartido |
+|---|---|---|---|---|
+| 1 | 300 | 0,059 | 0,049 | 0,8 |
+| 10 | 300 | 0,071 | 0,563 | 7,9 |
+| 30 | 300 | 0,081 | 1,702 | 21,1 |
+| 60 | 300 | 0,089 | 3,081 | 34,6 |
+| 1 | 2400 | 2,123 | 0,186 | 0,1 |
+| 10 | 2400 | 2,492 | 2,072 | 0,8 |
+| 30 | 2400 | 2,351 | 5,135 | 2,2 |
+| 60 | 2400 | 2,384 | 11,824 | 5,0 |
+
+**Bajo qué condiciones cambia la respuesta.** Con un solo cazador gana el cálculo individual, sobre todo con rango grande: se detiene apenas encuentra al jugador, mientras que el compartido recorre toda la región del rango (792 salas contra 70). Con rango pequeño el compartido gana desde unos pocos cazadores; con rango grande, a partir de unos 10 a 30. En las criptas del juego hay decenas de cazadores (36 en la de referencia), y además el compartido se reutiliza entre turnos (sección siguiente), cosa que el individual no puede hacer porque cada cazador parte de una sala distinta.
+
+### Límites conocidos
+
+La cota es el mayor rango de los cazadores de la partida. Un solo cazador con rango enorme obliga a que el cálculo compartido cubra esa región aunque los demás tengan rango pequeño. Con el catálogo actual (600 y 2400) no es un problema. Si apareciera un rango mucho mayor, convendría agrupar los cálculos por rango.
+
+---
+
+## P2 5.2 Rutas que dejan de ser válidas
+
+Especificación: [specs/001-terrain-hunter/spec.md](specs/001-terrain-hunter/spec.md) (FR-009) · Plan: [research.md](specs/001-terrain-hunter/research.md)
+
+### Problema
+
+Entre dos turnos de un cazador se abren y cierran puertas, el jugador se mueve, otros actores cambian de sala o mueren y cambian velocidades. La decisión tiene que ser siempre la de un cálculo desde cero; reutilizar solo vale si se puede demostrar que no cambia la respuesta.
+
+### Alternativas consideradas
+
+1. **Recalcular siempre**, en cada decisión.
+2. **Invalidar con cualquier cambio de puerta** (lo que decía el plan original).
+3. **Invalidación selectiva** (elegida).
+
+### Decisión
+
+`BuscadorRutas.asegurar` reutiliza el último cálculo salvo que:
+
+- el jugador cambió de sala (cambia el origen): siempre invalida;
+- la cota pedida supera la usada;
+- cambió una salida u→x **cuya sala de llegada x quedó asentada** en el último cálculo.
+
+La demostración del tercer punto: el resultado solo depende de las salidas que entran a salas asentadas. Si x no quedó asentada, dist(x) > cota, y cualquier ruta que use u→x cuesta más que la cota; abrir o cerrar esa salida no cambia ninguna distancia ≤ cota. Las muertes, los cambios de sala de otros actores y los cambios de velocidad no tocan el esqueleto: no invalidan.
+
+Para saber qué cambió sin buscar, cada `Puerta` avisa a su esqueleto al cambiar de estado, también cuando el cambio viene del pergamino o de cargar una partida (la propiedad `cerrada` lo hace en el setter). El esqueleto guarda los números de salida cambiados, y con más de 64 pendientes da todo por cambiado.
+
+La prueba `test_reutilizar_equivale_a_calcular_desde_cero` juega 60 rondas con 8 cazadores, puertas que se abren y cierran al azar y un jugador que se mueve, y compara cada decisión con un cálculo hecho aparte por relajación repetida, sin heap ni cachés.
+
+**¿Coincide con el plan?** No del todo. El plan original invalidaba con cualquier cambio de puerta. El análisis (hallazgo A3) señaló que eso no responde la pregunta de §5.2 («qué eventos invalidan qué información»), y la medición de abajo muestra cuándo importa la diferencia.
+
+### Análisis de complejidad
+
+Revisar si el cálculo sigue valiendo cuesta O(salidas cambiadas desde la última consulta). Recalcular cuesta lo de la sección anterior.
+
+### Evidencia empírica
+
+30 cazadores en la cuadrícula de 900 salas, 300 rondas; el jugador se mueve cada 4 rondas. «Estables»: una puerta cambia cada 50 rondas. «Inestables»: 8 puertas al azar por ronda. Las tres estrategias deciden exactamente lo mismo en todas las rondas (se verifica).
+
+| Rango | Puertas | Estrategia | ms por ronda | Cálculos |
+|---|---|---|---|---|
+| 2400 | estables | selectiva | 0,703 | 79 |
+| 2400 | estables | cualquier puerta | 0,695 | 80 |
+| 2400 | estables | recalcular siempre | 70,037 | 9000 |
+| 2400 | inestables | selectiva | 1,665 | 300 |
+| 2400 | inestables | cualquier puerta | 1,644 | 300 |
+| 2400 | inestables | recalcular siempre | 49,655 | 9000 |
+| 300 | estables | selectiva | 0,049 | 75 |
+| 300 | estables | cualquier puerta | 0,045 | 80 |
+| 300 | estables | recalcular siempre | 1,851 | 9000 |
+| 300 | inestables | selectiva | 0,052 | 110 |
+| 300 | inestables | cualquier puerta | 0,076 | 300 |
+| 300 | inestables | recalcular siempre | 1,443 | 9000 |
+
+Reutilizar ahorra entre 25 y 100 veces frente a recalcular siempre. La invalidación selectiva solo se nota cuando la región del rango es chica frente a la cripta: con rango 300 y puertas inestables hace 110 cálculos en vez de 300, porque la mayoría de las puertas que cambian están lejos. Con rango 2400 casi toda la cuadrícula queda asentada y cualquier cambio cuenta. Es la respuesta a la pregunta de §8: una puerta que se cierra sola lejos de todos los cazadores no invalida nada si su sala de llegada está fuera de la región calculada.
+
+### Límites conocidos
+
+El jugador moviéndose invalida siempre, y cada paso suyo cuesta un cálculo completo. En la cripta de referencia eso está dentro del presupuesto (sección P2 5.6), pero es lo que domina cuando el jugador se mueve sin parar.
+
+---
+
+## P2 5.3 El mapa conocido
+
+Especificación: [specs/002-niebla-ir-a/spec.md](specs/002-niebla-ir-a/spec.md) · Plan: [plan.md](specs/002-niebla-ir-a/plan.md) · Análisis: [analisis.md](specs/002-niebla-ir-a/analisis.md)
+
+### Problema
+
+El jugador conoce cada sala como explorada, avistada o desconocida, y recuerda cada puerta como estaba la última vez que la vio. Esas consultas ocurren en cada pantalla, en cada paso de «ir a» y en cada exploración con antorcha. Explorar tiene que costar lo que se revela, no lo que mide el mapa conocido. Todo cambio se revierte con el pergamino y entra en la línea de tiempo. «ir a» busca la ruta más barata sobre ese conocimiento, en menos de 5 ms por paso.
+
+### Alternativas consideradas
+
+1. **Vectores ordenados** de ids explorados y avistados: consulta O(log n) e inserción con desplazamiento, O(n), así que explorar la sala k cuesta proporcional a lo ya explorado.
+2. **Atributos en las salas** del esqueleto: mezcla el DTO del API (inmutable) con el estado del juego.
+3. **Una lista por sala y otra por salida** con los índices densos (elegida).
+
+Para «ir a»: compartir la implementación con el cazador o escribir otra búsqueda.
+
+### Decisión
+
+`MapaConocido` (`modelo/mapa_conocido.py`) guarda `estado[i]` (0, 1, 2) por sala y `recuerdo[s]` (−1 sin observar, 0 abierta, 1 cerrada) por salida. Cada cambio se anota en el historial como `(lista, posición, valor anterior)` con `registrar_elemento`, un tercer tipo de anotación agregado al `Historial` de la primera parte.
+
+Respuesta a la pregunta de §8 sobre la antorcha: para revertir la exploración de cinco salas basta guardar, por cada posición que cambió, la lista, la posición y el valor anterior. Son las salas que pasaron a exploradas o avistadas y las salidas observadas que cambiaron. No se copia el mapa.
+
+«ir a» usa **la misma clase** `BuscadorRutas` que el cazador, en otra instancia y con otras reglas: `pasable` = la salida se recuerda abierta, `admitida` = la sala está explorada. Compartir la clase asegura el mismo desempate (§3.4 remite a §3.2) con el código ya probado. Compartir la instancia o las distancias no sirve: el cazador usa las puertas reales y «ir a» la memoria del jugador.
+
+**¿Coincide con el plan?** Sí, con una mejora que salió de medir: el plan calculaba las distancias desde el destino a todo lo explorado. En la versión final el cálculo se detiene apenas queda asentada la sala del jugador. Su distancia ya es definitiva, y también la de cualquier vecina que pueda ser su primer paso, porque está más cerca del destino. El paso no cambia (el bench lo compara en cada viaje) y el trabajo baja a la mitad.
+
+### Análisis de complejidad
+
+| Operación | Costo |
+|---|---|
+| Estado de una sala o puerta recordada | O(1) |
+| Explorar una sala | O(salidas de la sala + salidas que llegan a ella) |
+| Entrar con antorcha | O(salidas de la sala y de sus vecinas) |
+| Revertir | O(cambios anotados) |
+| Un paso de «ir a» | O(R + E_R log R) sobre lo explorado, cortado al llegar a la sala del jugador |
+
+### Evidencia empírica
+
+Consultar el estado de una sala (ns por consulta):
+
+| Salas exploradas | Lista por índice | Vector ordenado de ids |
+|---|---|---|
+| 50 | 59 | 632 |
+| 300 | 61 | 872 |
+| 900 | 59 | 1104 |
+
+Explorar una sala nueva según cuántas hay exploradas (µs por sala, 900 salas en orden aleatorio):
+
+| Tramo | Lista por índice | Vector ordenado de ids |
+|---|---|---|
+| salas 0 a 90 | 2,20 | 44,12 |
+| salas 405 a 495 | 2,27 | 62,58 |
+| salas 810 a 900 | 2,27 | 62,80 |
+
+Un paso de «ir a» con todo el mapa explorado, 300 viajes al azar (ms):
+
+| Mapa | Promedio | p95 | Máximo | Sin cortar al llegar | Búsqueda hacia adelante | ¿Cumple 5 ms? |
+|---|---|---|---|---|---|---|
+| cripta-06 (300 salas) | 0,132 | 0,271 | 0,315 | 0,155 | 0,125 | sí |
+| sintética de 900 salas | 1,300 | 2,552 | 4,487 | 2,746 | 1,231 | sí |
+
+Las consultas no dependen del tamaño del mapa conocido y explorar cuesta lo mismo al principio que al final, como pide §5.3. En la cripta de referencia un paso de «ir a» tarda unas 15 veces menos que el límite en el peor viaje.
+
+### Límites conocidos
+
+En la cripta sintética de 900 salas el peor viaje queda cerca del límite (4,5 ms en la corrida final; en otra corrida llegó a 5,4 ms), que se mide en la cripta de referencia. Cortar al asentar la sala del jugador dejó el cálculo igual de rápido que una búsqueda hacia adelante desde el jugador. Para mapas mucho más grandes, la mejora siguiente sería guardar las distancias del último destino y reutilizarlas mientras el conocimiento no cambie, igual que con el cazador.
+
+---
+
+## P2 5.4 Resolubilidad
+
+Especificación: [specs/003-resolubilidad/spec.md](specs/003-resolubilidad/spec.md) · Plan: [plan.md](specs/003-resolubilidad/plan.md) · Análisis: [analisis.md](specs/003-resolubilidad/analisis.md)
+
+### Problema
+
+Antes de jugar, decidir si se puede obtener `llave_salida` y llegar a la salida por una puerta que la pide, con las llaves de `/llaves`. Obtener una llave puede abrir una región entera: repetir el recorrido por cada llave no cumple. Si no es resoluble, el reporte necesita la frontera bloqueada y las dependencias entre llaves, y tienen que salir del mismo recorrido. El ciclo se reporta de forma determinista.
+
+### Alternativas consideradas
+
+1. **Repetir el recorrido por llave** (`bench/resolubilidad_repetida.py`): un BFS con las llaves actuales; si encontró llaves nuevas, otro desde cero. O(L·(V + E)).
+2. **Recorrido incremental con puertas pendientes por llave** (elegido).
+
+### Decisión
+
+`VerificadorResolubilidad` (`modelo/verificador_resolubilidad.py`) hace un solo BFS con la `Fila` circular propia. Una salida cerrada cuya llave no se tiene queda en `pendientes[llave]`. Al obtener una llave se recorre su lista una vez y se encolan los destinos, y la lista queda vacía. Respuesta a la pregunta de §8: las puertas que el recorrido encontró cerradas antes de tener la llave están anotadas en la lista de esa llave, así que al obtenerla se liberan de una vez, sin volver a recorrer lo ya alcanzado.
+
+Si no es resoluble, el mismo recorrido sigue por detrás de la frontera, por capas según cuántas puertas cerradas se cruzan (0-1 BFS con dos `Fila`). Cada sala guarda la última puerta cerrada de su camino y cada puerta la anterior, así que las dependencias de una llave son las llaves de esa cadena. Un DFS iterativo con `Pila`, en orden de id, encuentra el primer ciclo. En cripta-05, la cripta sellada, informa `llave hierro → llave negra → llave hierro` con las dos puertas involucradas.
+
+El orden de las llaves es determinista: el BFS sigue N, S, E, O, y las llaves de una misma sala se toman en orden de id.
+
+**¿Coincide con el plan?** Sí.
+
+### Análisis de complejidad
+
+O(V + E + L log L): indexar las llaves (ordenadas con el merge sort propio), un recorrido y cada puerta pendiente liberada una vez. El reporte de una cripta no resoluble agrega otro O(V + E) y O(L + dependencias) para el ciclo.
+
+### Evidencia empírica
+
+Criptas publicadas (ms, solo el verificador; entre paréntesis, con la lectura de los archivos):
+
+| Cripta | Salas | Salidas | Llaves | Resoluble | ms |
+|---|---|---|---|---|---|
+| cripta-02 | 20 | 40 | 2 | sí | 0,08 (0,7) |
+| cripta-03 | 40 | 80 | 3 | sí | 0,13 (1,0) |
+| cripta-04 | 50 | 100 | 3 | sí | 0,15 (1,2) |
+| cripta-05 | 24 | 48 | 3 | no | 0,11 (0,9) |
+| cripta-06 | 300 | 760 | 4 | sí | 1,23 (9,2) |
+
+Llaves encadenadas: tramos de 6 salas, cada tramo detrás de una puerta que pide la llave que está al principio del anterior, más un desvío por sala para que el mapa sea ancho (ms):
+
+| Llaves | Salas | Salidas | Incremental | Repetido por llave | Recorridos del repetido | Repetido / incremental |
+|---|---|---|---|---|---|---|
+| 50 | 601 | 1199 | 2,6 | 30,2 | 51 | 12 |
+| 200 | 2401 | 4799 | 13,2 | 567,0 | 201 | 43 |
+| 500 | 6001 | 11999 | 45,9 | 3896,4 | 501 | 85 |
+
+El incremental crece como el tamaño de la cripta (de 4799 a 11999 salidas, 2,5 veces más, el tiempo crece 3,5 veces). El repetido crece como llaves × tamaño. La cripta publicada más grande se verifica en 1,2 ms, muy por debajo de los 200 ms.
+
+### Límites conocidos
+
+Las dependencias del reporte siguen una sola ruta por llave, la que cruza menos puertas cerradas. Si una llave se puede alcanzar por dos rutas que piden llaves distintas, el reporte muestra una de las dos. El ciclo informado es real sobre esa ruta, pero puede no ser el único. Lo dejamos escrito en la aclaración de la especificación.
+
+---
+
+## P2 5.5 Línea de tiempo y puntos de control
+
+Especificación: [specs/004-linea-de-tiempo/spec.md](specs/004-linea-de-tiempo/spec.md) · Plan: [plan.md](specs/004-linea-de-tiempo/plan.md) · Análisis: [analisis.md](specs/004-linea-de-tiempo/analisis.md)
+
+### Problema
+
+Consultar el estado en cualquier instante desde el inicio sin tocar la partida: como mucho una copia completa cada K acciones, una consulta no puede re-aplicar ni deshacer más de K acciones, y fuera de las copias solo se guarda lo necesario para reconstruir. 50 ms por consulta con 5000 acciones y el K por defecto. El pergamino recorta la línea sin recorrer toda la historia.
+
+### Alternativas consideradas
+
+1. **Hacia atrás**, invirtiendo cambios desde el estado actual con el historial de la primera parte. Las funciones del historial apuntan a los objetos vivos: para no tocar la partida habría que copiar el estado actual en cada consulta y volver a enlazar cada cambio a la copia. Además, consultar el principio de una partida de 5000 acciones invertiría 5000 acciones, salvo que también hubiera puntos de control.
+2. **Hacia adelante desde un punto de control**, re-simulando (elegida).
+3. **Sin puntos de control**: re-simular desde el inicio en cada consulta (se mide).
+
+### Decisión
+
+`LineaTiempo` (`modelo/linea_tiempo.py`) anota cada operación que cambia la partida: acciones del jugador con su argumento, cada avance del reloj, cada llegada de contenido (el DTO, compartido con la partida) y cada movimiento del cursor. Cada K acciones guarda un `PuntoDeControl`: una copia completa justo antes de la acción, incluido el `random.Random`. Para consultar se copia el punto anterior más cercano y se re-aplican a lo sumo K acciones con el mismo motor del juego.
+
+- **Ubicar el punto**: el de la acción k está en la posición ⌊(k−1)/K⌋ de la lista, O(1). Para un instante t, búsqueda binaria propia sobre los tiempos de decisión (no se usa `bisect`).
+- **Estado en t**: se re-simula hasta la última decisión ≤ t; si t no es esa decisión, se hace la acción y luego solo los eventos con tiempo ≤ t (`avanzar_hasta_tiempo`). Si varios eventos ocurren en t, se ven todos.
+- **Pergamino**: se quitan de la cola las operaciones de la acción revertida (se conserva la llegada de contenido, que el pergamino no deshace), su tiempo de decisión y el punto de control tomado al iniciarla. Cuesta O(operaciones de esa acción). Para que la línea y el pergamino coincidan, el cursor del inventario pasó a anotarse en el historial (supuesto de la especificación).
+- **Copia**: `EstadoPartida.copiar()` usa `deepcopy` con copias propias donde importa. El grafo, las salas y la caché del catálogo se comparten (`__deepcopy__` devuelve el mismo objeto); `Puerta` y `Evento` usan `__slots__` y copia directa; la agenda copia solo los eventos vigentes; el rastro copia solo los tiempos (la vecindad enlazada es un atajo que se rearma, y copiarla recursaba hasta el límite de Python en mapas grandes); la copia no lleva historial de retroceso ni cachés de búsqueda.
+- **Guardado**: formato 5, con K y las operaciones. Al cargar, la partida se re-simula desde el inicio para rearmar los puntos y el resultado se compara con el estado guardado. Si no coincide (por ejemplo, porque una prueba tocó la vida a mano), se carga el estado y la línea empieza de nuevo desde ese punto, con un aviso. Los formatos 3 (primera parte) y 4 se rechazan con un mensaje.
+
+**¿Coincide con el plan?** Sí en el método. Lo que cambió fue por medir: la primera copia de la cripta de referencia tardaba 17,1 ms y ocupaba unos 340 KB. Con las copias propias bajó a 4,6 ms y unos 220 KB. Al medir en una cuadrícula grande apareció el problema de recursión del rastro. El K por defecto (25) salió de la tabla de abajo.
+
+### Análisis de complejidad
+
+| Operación | Costo |
+|---|---|
+| Anotar una operación | O(1) |
+| Punto de control | O(tamaño del estado), una vez cada K acciones |
+| `historia #k` | O(1) ubicar + copia + ≤ K acciones re-simuladas |
+| `historia t` | O(log n) ubicar + lo anterior |
+| Pergamino | O(operaciones de la acción revertida) |
+| Memoria | O(operaciones) + ⌈n/K⌉ copias |
+
+### Evidencia empírica
+
+Cripta de referencia con **todo** su contenido cargado y sus 75 enemigos activos (el peor caso: en una partida real solo actúan los que el jugador despertó), 5000 acciones del jugador, 40 consultas repartidas por número de acción y por instante:
+
+| K | Puntos | Operaciones | Memoria | Consulta promedio | p95 | Máximo | ¿Cumple 50 ms (p95)? |
+|---|---|---|---|---|---|---|---|
+| 10 | 500 | 10000 | 97 MB | 10,2 ms | 16,7 ms | 23,7 ms | sí |
+| 15 | 334 | 10000 | 65 MB | 14,4 ms | 23,4 ms | 103,4 ms | sí |
+| 20 | 250 | 10000 | 49 MB | 17,9 ms | 27,0 ms | 92,4 ms | sí |
+| **25** | 200 | 10000 | **40 MB** | **18,3 ms** | **33,8 ms** | 56,1 ms | **sí** |
+| 50 | 100 | 10000 | 21 MB | 33,9 ms | 56,9 ms | 62,2 ms | no |
+| 200 | 25 | 10000 | 6,4 MB | 120,5 ms | 216,6 ms | 299,0 ms | no |
+| sin puntos | 1 | 10000 | 1,8 MB | 2723 ms | — | 4022 ms | no |
+
+Las filas 15 y 20 son de una corrida aparte con 80 consultas. Un punto de control en esa misma cripta cuesta 4,2 ms de promedio (5,5 ms de máximo), una vez cada K acciones.
+
+**Por qué K = 25.** La memoria baja como 1/K y el tiempo de consulta sube con K (se re-simulan en promedio K/2 acciones). K = 25 es el mayor valor cuyo p95 queda bajo 50 ms en el peor caso de la cripta de referencia (33,8 ms; en otra corrida, 29,9 ms). Con K = 50 el p95 ya pasa de 50 ms, y K = 10 duplica la memoria para ganar unos milisegundos. El máximo no sirve para elegir K: aparecen consultas sueltas de 60 a 100 ms con cualquier K (K = 15 tuvo una de 103 ms), así que no dependen de cuántas acciones se re-simulan. Son pausas del recolector de basura de Python con decenas de MB de copias vivas, el mismo fenómeno que vimos en la sección 5.2 de la primera parte. Respuesta a la pregunta de §8: el punto razonable está donde la consulta más lenta toca el límite, y lo encontramos midiendo esa consulta más lenta para cada K.
+
+### Límites conocidos
+
+- Consultas sueltas pueden pasar los 50 ms por pausas del recolector de basura (ver arriba). El p95 cumple.
+- En una cripta sintética más pesada (400 salas, 150 enemigos activos) el p95 con K = 25 es de 70 a 105 ms según la corrida: cada acción re-simulada cuesta más porque actúan más enemigos. Ahí convendría un K menor, y para eso está `--checkpoint-cada`.
+- Cargar una partida re-simula todas sus acciones. Con 5000 acciones en el peor caso de la cripta de referencia son unos 15 segundos. La mejora sería guardar también los puntos de control en el archivo.
+- La copia usa `copy.deepcopy`, cuyo `memo` interno es un diccionario de la biblioteca estándar. No es un índice del modelo, y las partes que cuentan (ubicar el punto, recortar, re-aplicar) usan estructuras propias.
+
+---
+
+## P2 5.6 Revisión de decisiones de la primera parte
+
+| Decisión de la primera parte | ¿Sigue siendo adecuada? | Antes | Después |
+|---|---|---|---|
+| Agenda con heap y cancelación perezosa (4.1) | Sí | ver tabla de 4.1 | ver abajo: el ciclo con 36 cazadores en la cripta de referencia sigue muy por debajo de 20 ms |
+| Historial de retroceso como lista de pilas (4.6) | Sí, ampliado | anotaba atributos y funciones | también anota posiciones de lista (mapa conocido) y el cursor del inventario |
+| Puertas independientes por lado | Sí, ampliado | estado de la puerta | la puerta avisa al esqueleto cuando cambia (invalidación de rutas) y usa `__slots__` (puntos de control) |
+| Rastro con vecindad enlazada (4.7) | Sí | vecinas sin costo | cada vecina guarda el costo de su salida; la copia guarda solo los tiempos |
+| Movimiento con costo fijo 100 | **No** | todos los movimientos cuestan 100 | cada movimiento cuesta lo que su salida, también para errantes y rastreadores |
+| Guardado binario versión 3 (4.10) | Sí, con versión nueva | versión 3 | versión 4 (mapa conocido) y 5 (línea de tiempo); las anteriores se rechazan |
+| Precarga por BFS del esqueleto (4.2) | Sí, sin cambios | — | sigue usando el esqueleto completo: es infraestructura, no conocimiento del jugador (FR-105) |
+
+Ciclo completo entre dos decisiones del jugador, repetido con la carga nueva (ms, límite 20):
+
+| Escenario | Promedio | p95 | Máximo | Eventos por ciclo | ¿Cumple? |
+|---|---|---|---|---|---|
+| Primera parte: cripta-01 con el controlador | 0,03 | 0,04 | 0,09 | 1 | sí |
+| cripta-06 con sus 75 enemigos activos, 36 cazadores | 1,21 | 1,66 | 6,23 | 82 | sí |
+| cripta-06, el jugador moviéndose en cada ciclo | 1,89 | 4,16 | 16,52 | 120 | sí |
+| 900 salas, 900 enemigos (como en la primera parte) | 12,87 | 19,28 | 43,46 | 1086 | p95 sí |
+| 900 salas, 60 cazadores de rango 2400, costos variados | 12,77 | 18,41 | 45,70 | 1020 | p95 sí |
+
+Las dos filas de cripta-06 incluyen la línea de tiempo activa (el controlador la lleva siempre), con sus puntos de control cada 25 acciones.
+
+Agenda (sacar el siguiente y reprogramarlo, µs por operación), repetida: con 3000 eventos el heap tarda 3,41 µs y la lista 534,38 (157 veces más), igual que en la primera parte. Historial de retroceso, repetido: 737 µs por acción y 233 µs por deshacer con 100 enemigos (antes 704 y 225).
+
+Con la carga nueva, el heap y el historial siguen siendo la decisión correcta: el ciclo de la cripta de referencia con todos sus cazadores activos y moviéndose cabe con amplitud en 20 ms. El costo por evento sigue en 8 a 16 µs, como en la primera parte, así que los cazadores no cambiaron la escala del problema. Su costo extra es el cálculo compartido, que se hace una vez por movimiento del jugador.

@@ -55,8 +55,8 @@
 
 ## Phase 6: Documentación
 
-- [ ] T123 Sección «Niebla de guerra e ir a» en `DECISIONES.md` con las mediciones de T122, enlaces a spec y plan, y si la decisión final coincide con el plan.
-- [ ] T124 `README.md`: comandos `mapa` e `ir a`; `PROMPTS_LLM.md`: comandos de spec-kit de esta capacidad.
+- [X] T123 Sección «Niebla de guerra e ir a» en `DECISIONES.md` con las mediciones de T122, enlaces a spec y plan, y si la decisión final coincide con el plan.
+- [X] T124 `README.md`: comandos `mapa` e `ir a`; `PROMPTS_LLM.md`: comandos de spec-kit de esta capacidad.
 
 ## Dependencies
 

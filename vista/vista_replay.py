@@ -22,6 +22,9 @@ class VistaReplay:
     def mostrar_mapa(self, estado, esqueleto):
         pass
 
+    def mostrar_historia(self, estado, que, instante):
+        pass
+
     def mostrar_fin(self, estado):
         print(f"\nResultado: {estado.resultado}. Acciones: {estado.acciones}, "
               f"enemigos derrotados: {estado.enemigos_derrotados}, tiempo final: {estado.tiempo}")

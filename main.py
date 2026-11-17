@@ -18,6 +18,8 @@ from controlador.partida import ControladorPartida
 from controlador.verificacion_cripta import VerificacionCripta
 from modelo.cache_catalogo import CacheCatalogo
 from vista.consola import Consola
+from modelo.linea_tiempo import CADA_POR_DEFECTO
+from vista.texto_historia import lineas_historia
 from vista.texto_resolubilidad import lineas_resolubilidad
 from vista.vista_replay import VistaReplay
 
@@ -25,6 +27,13 @@ CARPETA_CACHE = "cache_catalogo"
 CARPETA_CRIPTAS = "cache_criptas"
 CARPETA_PARTIDAS = "partidas"
 ARCHIVO_PUNTAJES = "puntajes.txt"
+
+
+class VistaSilenciosa:
+    """Para --replay --hasta: no muestra nada mientras se reproduce."""
+
+    def __getattr__(self, nombre):
+        return lambda *args, **kwargs: None
 
 
 def avisar_espera(operacion, segundos, intento):
@@ -56,6 +65,10 @@ def leer_argumentos(argv=None):
                         help="solo verificar si la cripta se puede ganar, sin jugar")
     parser.add_argument("--forzar", action="store_true",
                         help="jugar aunque la cripta no sea resoluble")
+    parser.add_argument("--checkpoint-cada", type=_positivo, default=CADA_POR_DEFECTO,
+                        metavar="K", help="acciones entre puntos de control de la línea de tiempo")
+    parser.add_argument("--hasta", type=int, metavar="T",
+                        help="con --replay: mostrar el estado en el instante T y salir")
     return parser.parse_args(argv)
 
 
@@ -83,7 +96,8 @@ def verificar(cripta_id, fuente):
     return 0 if reporte.resoluble else 1
 
 
-def jugar(cripta_id, fuente, tamano_cache, semilla, vista, forzar=False):
+def jugar(cripta_id, fuente, tamano_cache, semilla, vista, forzar=False,
+          checkpoint_cada=CADA_POR_DEFECTO):
     datos = fuente.datos_cripta(cripta_id)
     fuente.fijar_presupuesto(datos.presupuesto_solicitudes)
     esqueleto, reporte = VerificacionCripta.ejecutar(fuente, datos)
@@ -98,7 +112,7 @@ def jugar(cripta_id, fuente, tamano_cache, semilla, vista, forzar=False):
         semilla = secrets.randbelow(10 ** 9)
 
     controlador = ControladorPartida(datos, fuente, cache, vista, semilla, version_catalogo,
-                                     CARPETA_PARTIDAS, esqueleto)
+                                     CARPETA_PARTIDAS, esqueleto, checkpoint_cada)
     ruta = os.path.join(CARPETA_PARTIDAS, f"partida-{datetime.now():%Y%m%d-%H%M%S}.log")
     bitacora = BitacoraPartida(ruta)
     bitacora.crear(CabeceraPartida(datos.id, datos.version, version_catalogo, semilla))
@@ -116,7 +130,7 @@ def jugar(cripta_id, fuente, tamano_cache, semilla, vista, forzar=False):
     return 0
 
 
-def reproducir(ruta, fuente, tamano_cache):
+def reproducir(ruta, fuente, tamano_cache, hasta=None, checkpoint_cada=CADA_POR_DEFECTO):
     cabecera, comandos = BitacoraPartida.leer(ruta)
     if not cabecera.reproducible:
         print("[REPLAY] Esta bitácora empieza desde un guardado cuya bitácora original ya no "
@@ -133,11 +147,25 @@ def reproducir(ruta, fuente, tamano_cache):
         return 1
     cache = preparar_cache(fuente, version_catalogo, tamano_cache)
 
-    vista = VistaReplay()
+    # con --hasta solo se imprime el resumen, sin la vista (FR-307)
+    vista = VistaReplay() if hasta is None else VistaSilenciosa()
     controlador = ControladorPartida(datos, fuente, cache, vista, cabecera.semilla,
-                                     version_catalogo, CARPETA_PARTIDAS)
+                                     version_catalogo, CARPETA_PARTIDAS,
+                                     checkpoint_cada=checkpoint_cada)
     pendientes = iter(comandos)
     controlador.jugar(lambda: next(pendientes, None))
+    if hasta is not None:
+        estado = controlador.estado
+        if hasta > estado.tiempo:
+            # la partida grabada terminó antes del instante pedido: se muestra el final
+            for linea in lineas_historia(estado, f"t={hasta}", estado.tiempo):
+                print(linea)
+            print(f"La partida grabada termina en t={estado.tiempo}, antes de t={hasta}.")
+        else:
+            consultado, que, instante = controlador.consultar_historia(str(hasta))
+            for linea in lineas_historia(consultado, que, instante):
+                print(linea)
+        return 0
     vista.mostrar_reporte(fuente.solicitudes_realizadas(), datos.presupuesto_solicitudes,
                           cache.aciertos, cache.fallos)
     return 0
@@ -154,7 +182,11 @@ def principal(argv=None):
     fuente = crear_fuente(args.offline)
     try:
         if args.replay:
-            return reproducir(args.replay, fuente, args.cache_size)
+            return reproducir(args.replay, fuente, args.cache_size, args.hasta,
+                              args.checkpoint_cada)
+        if args.hasta is not None:
+            print("--hasta se usa junto con --replay partida.log")
+            return 1
         if args.verificar:
             return verificar(args.verificar, fuente)
         vista = Consola()
@@ -163,7 +195,8 @@ def principal(argv=None):
         if cripta_id is None:
             print("No se eligió ninguna cripta.")
             return 1
-        return jugar(cripta_id, fuente, args.cache_size, args.semilla, vista, args.forzar)
+        return jugar(cripta_id, fuente, args.cache_size, args.semilla, vista, args.forzar,
+                     args.checkpoint_cada)
     except ErrorPresupuesto as error:
         print(f"[PRESUPUESTO] {error}")
     except ErrorFuenteDatos as error:

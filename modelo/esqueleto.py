@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from estructuras.vector_ordenado import VectorOrdenado
 from modelo.grafo_cripta import GrafoCripta
 from modelo.puerta import Puerta
@@ -19,6 +21,20 @@ class Esqueleto:
         self._puertas_por_salida = []      # índice de salida del grafo -> Puerta
         self._cambios = []                 # salidas cuya puerta cambió desde la última consulta
         self._desbordado = False
+
+    def __deepcopy__(self, memo):
+        """Las salas y el grafo no cambian: se comparten. Las puertas sí: se copian."""
+        copia = Esqueleto.__new__(Esqueleto)
+        memo[id(self)] = copia
+        copia._salas = self._salas
+        copia._grafo = self._grafo
+        copia._puertas = VectorOrdenado()
+        for clave, puerta in self._puertas:
+            copia._puertas.insertar(clave, deepcopy(puerta, memo))
+        copia._puertas_por_salida = [deepcopy(p, memo) for p in self._puertas_por_salida]
+        copia._cambios = list(self._cambios)
+        copia._desbordado = self._desbordado
+        return copia
 
     def agregar_pagina(self, pagina):
         """Incorpora un PaginaSalas (las salidas ya vienen en orden N, S, E, O)."""
@@ -65,7 +81,7 @@ class Esqueleto:
             for id_sala, direccion in self._grafo.salida_de:
                 puerta = self.puerta(id_sala, direccion)
                 puerta.indice = len(self._puertas_por_salida)
-                puerta.al_cambiar = self._anotar_cambio
+                puerta.esqueleto = self
                 self._puertas_por_salida.append(puerta)
             self._cambios = []
             self._desbordado = False
@@ -88,7 +104,7 @@ class Esqueleto:
         self._desbordado = False
         return cambios, desbordado
 
-    def _anotar_cambio(self, indice):
+    def anotar_cambio(self, indice):
         if self._desbordado or indice is None:
             return
         if len(self._cambios) >= MAX_CAMBIOS_ANOTADOS:
