@@ -38,7 +38,7 @@
 
 ## Phase 6: Documentación
 
-- [ ] T316 Sección «Línea de tiempo» en `DECISIONES.md`; `README.md` con `historia`, `--checkpoint-cada` y `--replay --hasta`; `PROMPTS_LLM.md`.
+- [X] T316 Sección «Línea de tiempo» en `DECISIONES.md`; `README.md` con `historia`, `--checkpoint-cada` y `--replay --hasta`; `PROMPTS_LLM.md`.
 
 ## Dependencies
 

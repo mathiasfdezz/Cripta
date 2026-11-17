@@ -35,7 +35,7 @@
 
 ## Phase 5: Documentación
 
-- [ ] T216 Sección «Resolubilidad» en `DECISIONES.md`; `README.md` con `--verificar` y `--forzar`; `PROMPTS_LLM.md` con los comandos de spec-kit de esta capacidad.
+- [X] T216 Sección «Resolubilidad» en `DECISIONES.md`; `README.md` con `--verificar` y `--forzar`; `PROMPTS_LLM.md` con los comandos de spec-kit de esta capacidad.
 
 ## Dependencies
 
