@@ -46,7 +46,7 @@
 
 ## Phase 4: Vista (FR-105, FR-107)
 
-- [ ] T120 [P] `tests/test_vista_niebla.py`: la pantalla no muestra nombres de salas avistadas; `mapa` lista exploradas, salidas, costos, puertas recordadas y avistadas; el motivo de detención se muestra (FR-105, FR-107, FR-112).
+- [ ] T120 [P] `tests/test_vista_niebla.py`: la pantalla no muestra nombres de salas avistadas; la precarga sigue trayendo vecinas no exploradas; `mapa` lista exploradas, salidas, costos, puertas recordadas y avistadas; el motivo de detención se muestra (FR-105, FR-107, FR-112).
 - [ ] T121 `vista/consola.py` y `vista/menu_acciones.py`: salidas según el conocimiento del jugador, comando `mapa`, ayuda de `ir a`, y `controlador/partida.py` para que `mapa` no vaya a la bitácora (FR-105, FR-107).
 
 ## Phase 5: Mediciones (PR-101, PR-102)
