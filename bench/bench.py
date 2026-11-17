@@ -1,6 +1,7 @@
 from bench import (bench_agenda, bench_bitacora, bench_busqueda_cache, bench_cazadores, bench_ciclo,
                    bench_estructuras, bench_fichas_liberadas, bench_guardado, bench_mapa,
-                   bench_ordenamientos, bench_rastro, bench_retroceso, bench_umbral)
+                   bench_ordenamientos, bench_rastro, bench_resolubilidad, bench_retroceso,
+                   bench_umbral)
 
 
 def principal():
@@ -31,6 +32,9 @@ def principal():
     print("
 ### Segunda parte: mapa conocido e ir a (P2 5.3)")
     bench_mapa.principal()
+    print("
+### Segunda parte: verificación de resolubilidad (P2 5.4)")
+    bench_resolubilidad.principal()
 
 
 if __name__ == "__main__":
