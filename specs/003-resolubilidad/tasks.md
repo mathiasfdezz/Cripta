@@ -11,16 +11,16 @@
 ## Phase 2: User Story 1 y 2 - Verificador (P1)
 
 ### Tests (primero)
-- [ ] T203 [P] [US1] `tests/test_resolubilidad.py::test_resoluble_con_orden` (FR-201, FR-203, FR-204).
-- [ ] T204 [P] [US1] `test_orden_determinista_con_varios_validos` (FR-204, Apéndice B).
-- [ ] T205 [P] [US1] `test_llave_de_errante_en_su_sala_inicial` (FR-202, Apéndice B).
-- [ ] T206 [P] [US2] `test_llave_salida_detras_de_su_propia_puerta` (FR-205, FR-206, Apéndice B).
-- [ ] T207 [P] [US2] `test_ciclo_de_dos_llaves` y `test_cripta_sellada_publicada` con el paquete offline (FR-206).
-- [ ] T208 [P] [US2] `test_reporte_frontera_y_ubicaciones`, `test_puerta_sin_llave`, `test_llave_que_no_esta`, `test_salida_sin_puerta_que_la_pida` (FR-203, FR-205).
+- [X] T203 [P] [US1] `tests/test_resolubilidad.py::test_resoluble_con_orden` (FR-201, FR-203, FR-204).
+- [X] T204 [P] [US1] `test_orden_determinista_con_varios_validos` (FR-204, Apéndice B).
+- [X] T205 [P] [US1] `test_llave_de_errante_en_su_sala_inicial` (FR-202, Apéndice B).
+- [X] T206 [P] [US2] `test_llave_salida_detras_de_su_propia_puerta` (FR-205, FR-206, Apéndice B).
+- [X] T207 [P] [US2] `test_ciclo_de_dos_llaves` y `test_cripta_sellada_publicada` con el paquete offline (FR-206).
+- [X] T208 [P] [US2] `test_reporte_frontera_y_ubicaciones`, `test_puerta_sin_llave`, `test_llave_que_no_esta`, `test_salida_sin_puerta_que_la_pida` (FR-203, FR-205).
 
 ### Implementation
-- [ ] T209 `modelo/puerta_bloqueada.py` y `modelo/reporte_resolubilidad.py` (FR-204, FR-205, FR-206).
-- [ ] T210 `modelo/verificador_resolubilidad.py`: recorrido incremental con puertas pendientes por llave, frontera, dependencias por 0-1 BFS y ciclo por DFS iterativo (FR-201 a FR-206, PR-202).
+- [X] T209 `modelo/puerta_bloqueada.py` y `modelo/reporte_resolubilidad.py` (FR-204, FR-205, FR-206).
+- [X] T210 `modelo/verificador_resolubilidad.py`: recorrido incremental con puertas pendientes por llave, frontera, dependencias por 0-1 BFS y ciclo por DFS iterativo (FR-201 a FR-206, PR-202).
 
 ## Phase 3: Integración (FR-207, FR-208, FR-209)
 
