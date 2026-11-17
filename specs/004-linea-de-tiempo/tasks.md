@@ -17,7 +17,7 @@
 - [ ] T306 [P] [US1] `test_t_mayor_que_el_reloj_se_rechaza` y casos inválidos (FR-306, Apéndice B).
 - [ ] T307 [P] [US1] `test_consulta_no_altera_nada` (FR-304, Apéndice B).
 - [ ] T308 [P] [US1] `test_pergamino_quita_acciones_de_la_linea` (FR-305, Apéndice B).
-- [ ] T309 [P] [US1] `test_nunca_mas_de_k_acciones` y `test_equivalencia_en_partida_larga` (FR-308).
+- [ ] T309 [P] [US1] `test_nunca_mas_de_k_acciones` (también: nunca más de ⌈acciones/K⌉ puntos guardados) y `test_equivalencia_en_partida_larga` con K por defecto y un tope holgado de tiempo por consulta (FR-308, PR-301).
 
 ### Implementation
 - [ ] T310 [US1] `vista/texto_historia.py` (resumen) y comando `historia <t>` / `historia #k` en `controlador/partida.py` y `vista/consola.py`; `historia` fuera de partida.log (FR-301, FR-303, FR-304).
