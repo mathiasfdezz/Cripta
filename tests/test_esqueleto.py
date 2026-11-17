@@ -6,7 +6,7 @@ from adaptadores.mapeadores.mapeador_salas import pagina_salas_desde_json
 from modelo.esqueleto import Esqueleto
 from modelo.precarga import salas_a_precargar
 
-RUTA_CRIPTA_01 = os.path.join(os.path.dirname(__file__), "..", "datos_offline",
+RUTA_CRIPTA_01 = os.path.join(os.path.dirname(__file__), "datos_p1",
                               "cripta-01", "salas", "pagina_1.json")
 
 

@@ -13,7 +13,7 @@ from controlador.partida import ControladorPartida
 from modelo.cache_catalogo import CacheCatalogo
 from modelo.registro_puntaje import RegistroPuntaje
 
-CARPETA_OFFLINE = os.path.join(os.path.dirname(__file__), "..", "datos_offline")
+CARPETA_OFFLINE = os.path.join(os.path.dirname(__file__), "datos_p1")
 
 
 class VistaMuda:

@@ -13,7 +13,7 @@ from modelo.estado_partida import EstadoPartida
 from modelo.inventario import Inventario
 from modelo.jugador import Jugador
 
-CARPETA_DATOS = os.path.join(os.path.dirname(__file__), "..", "datos_offline")
+CARPETA_DATOS = os.path.join(os.path.dirname(__file__), "datos_p1")
 
 
 def ficha_enemigo(id_="ent_rata_gigante", nombre="Rata gigante", vida_max=12, ataque=5,

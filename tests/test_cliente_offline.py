@@ -9,7 +9,7 @@ from adaptadores.fuente_datos import FuenteDatos
 from adaptadores.rutas_offline import RutasOffline
 
 # usa los datos reales de cripta-01 que están en el repo
-CARPETA = os.path.join(os.path.dirname(__file__), "..", "datos_offline")
+CARPETA = os.path.join(os.path.dirname(__file__), "datos_p1")
 
 
 class PruebasClienteOffline(unittest.TestCase):

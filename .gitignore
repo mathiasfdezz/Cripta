@@ -15,4 +15,7 @@ puntajes.txt
 # archivos del sistema
 desktop.ini
 Thumbs.db
-.DS_Store.env
+.DS_Store
+
+# secretos (por ejemplo la clave del agente)
+.env
