@@ -31,9 +31,13 @@ class BuscadorRutas:
         self.reutilizados = 0
         self.salas_asentadas = 0
 
-    def calcular(self, objetivo, cota):
+    def calcular(self, objetivo, cota, hasta=None):
         """Distancias exactas hasta 'objetivo' (índice denso) de todas las salas que
-        están a lo sumo a 'cota'. O(R + E_R log R), R = salas dentro de la cota."""
+        están a lo sumo a 'cota'. O(R + E_R log R), R = salas dentro de la cota.
+
+        Con 'hasta' se detiene apenas esa sala queda asentada: su distancia ya es
+        final y también la de toda vecina que pueda ser su primer paso (está más
+        cerca del objetivo), así que primer_paso sigue siendo exacto."""
         self._epoca += 1
         epoca = self._epoca
         distancia, vista, asentada = self._distancia, self._vista, self._asentada
@@ -54,6 +58,8 @@ class BuscadorRutas:
                 break
             asentada[sala] = epoca
             self.salas_asentadas += 1
+            if sala == hasta:
+                break
             for origen, costo, salida in entrantes[sala]:
                 if asentada[origen] == epoca or not pasable(salida):
                     continue

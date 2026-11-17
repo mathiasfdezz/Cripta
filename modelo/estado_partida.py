@@ -440,8 +440,8 @@ class EstadoPartida:
             self._buscador_viaje = BuscadorRutas(grafo, self.mapa.recuerda_abierta,
                                                  self.mapa.esta_explorada)
         buscador = self._buscador_viaje
-        buscador.calcular(objetivo, SIN_COTA)
         desde = grafo.indice(self.jugador.sala)
+        buscador.calcular(objetivo, SIN_COTA, hasta=desde)
         d = buscador.distancia(desde)
         if d is None:
             return None

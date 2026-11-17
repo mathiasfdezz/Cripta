@@ -1,6 +1,6 @@
 from bench import (bench_agenda, bench_bitacora, bench_busqueda_cache, bench_cazadores, bench_ciclo,
-                   bench_estructuras, bench_fichas_liberadas, bench_guardado, bench_ordenamientos,
-                   bench_rastro, bench_retroceso, bench_umbral)
+                   bench_estructuras, bench_fichas_liberadas, bench_guardado, bench_mapa,
+                   bench_ordenamientos, bench_rastro, bench_retroceso, bench_umbral)
 
 
 def principal():
@@ -28,6 +28,9 @@ def principal():
     bench_ciclo.principal()
     print("\n### Segunda parte: ruta del cazador e invalidación (P2 5.1 y 5.2)")
     bench_cazadores.principal()
+    print("
+### Segunda parte: mapa conocido e ir a (P2 5.3)")
+    bench_mapa.principal()
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@
 
 ## Phase 5: Mediciones (PR-101, PR-102)
 
-- [ ] T122 `bench/bench_mapa.py`: consultas al mapa (lista frente a `VectorOrdenado`), exploración según el tamaño del mapa, paso de «ir a» en la cripta de referencia explorada completa y en una sintética de 900 salas; integración en `bench/bench.py` (PR-101, PR-102).
+- [X] T122 `bench/bench_mapa.py`: consultas al mapa (lista frente a `VectorOrdenado`), exploración según el tamaño del mapa, paso de «ir a» en la cripta de referencia explorada completa y en una sintética de 900 salas; integración en `bench/bench.py` (PR-101, PR-102).
 
 ## Phase 6: Documentación
 
