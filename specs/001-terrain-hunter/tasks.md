@@ -90,13 +90,13 @@
 
 **Purpose**: Verificación de presupuestos de tiempo y análisis empírico para DECISIONES.md.
 
-- [ ] T028 Implementar módulo `bench/bench_cazadores.py` (criptas sintéticas deterministas por semilla en `bench/cripta_sintetica.py`) con escenarios reproducibles por semilla para:
+- [X] T028 Implementar módulo `bench/bench_cazadores.py` (criptas sintéticas deterministas por semilla en `bench/cripta_sintetica.py`) con escenarios reproducibles por semilla para:
   1. Cálculo individual frente a compartido (con 10, 50 y decenas de cazadores) (PR-001).
   2. Recalcular siempre frente a caché con invalidación (PR-001).
   3. Puertas estables frente a puertas inestables (frecuentes aperturas/cierres) (PR-001).
   4. Criptas sintéticas con salidas de un solo sentido y puertas cerradas en un solo sentido (PR-001).
-- [ ] T029 Actualizar `bench/bench_agenda.py` y `bench/bench_ciclo.py` para repetir las mediciones de la primera parte con la carga añadida de decenas de cazadores activos y verificar que el ciclo se mantiene bajo 20 ms en la cripta de referencia (PR-001).
-- [ ] T030 Integrar las nuevas opciones de benchmark en `bench/bench.py` y `main.py --bench`.
+- [X] T029 Actualizar `bench/bench_agenda.py` y `bench/bench_ciclo.py` para repetir las mediciones de la primera parte con la carga añadida de decenas de cazadores activos y verificar que el ciclo se mantiene bajo 20 ms en la cripta de referencia (PR-001).
+- [X] T030 Integrar las nuevas opciones de benchmark en `bench/bench.py` y `main.py --bench`.
 
 ---
 
