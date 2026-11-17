@@ -77,12 +77,12 @@
 **Goal**: Mostrar costos de salidas de la sala actual y distinguir cazadores en la interfaz interactiva.
 
 ### Tests for User Story 3 (TDD - Escribir primero)
-- [ ] T024 [P] [US3] Escribir prueba unitaria `test_vista_muestra_costos_salidas` en `tests/test_vista_terreno.py` citando FR-010: verificar formateo de costos de salidas en la descripción de la sala actual.
-- [ ] T025 [P] [US3] Escribir prueba unitaria `test_vista_distingue_cazadores` en `tests/test_vista_terreno.py` citando FR-011: verificar que los cazadores se diferencian en la lista de enemigos visibles.
+- [X] T024 [P] [US3] Escribir prueba unitaria `test_vista_muestra_costos_salidas` en `tests/test_vista_terreno.py` citando FR-010: verificar formateo de costos de salidas en la descripción de la sala actual.
+- [X] T025 [P] [US3] Escribir prueba unitaria `test_vista_distingue_cazadores` en `tests/test_vista_terreno.py` citando FR-011: verificar que los cazadores se diferencian en la lista de enemigos visibles.
 
 ### Implementation for User Story 3
-- [ ] T026 [US3] Actualizar `vista/consola.py` y `vista/estilo.py` para renderizar el costo de cada salida en la sala del jugador (ej. `N (costo 100)`) (FR-010).
-- [ ] T027 [US3] Actualizar `vista/consola.py` para distinguir enemigos cazadores de errantes y rastreadores (FR-011).
+- [X] T026 [US3] Actualizar `vista/consola.py` y `vista/estilo.py` para renderizar el costo de cada salida en la sala del jugador (ej. `N (costo 100)`) (FR-010).
+- [X] T027 [US3] Actualizar `vista/consola.py` para distinguir enemigos cazadores de errantes y rastreadores (FR-011).
 
 ---
 
