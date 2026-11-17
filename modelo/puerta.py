@@ -6,6 +6,10 @@ class Puerta:
     y son independientes (lo confirmó el profesor): abrir la salida E de la sala 2
     no cambia la salida O de la sala 5."""
 
+    # hay una por salida y cada punto de control las copia: sin __dict__ ocupan un cuarto
+    __slots__ = ("_cerrada", "llave", "cierre_automatico", "costo", "_cerrada_inicial",
+                 "indice", "esqueleto")
+
     def __init__(self, salida):
         self._cerrada = bool(salida.cerrada)
         self.llave = salida.llave
@@ -15,7 +19,7 @@ class Puerta:
         # los pone el esqueleto al numerar las salidas: así la búsqueda de rutas se
         # entera de qué puerta cambió, también cuando el cambio viene de deshacer
         self.indice = None
-        self.al_cambiar = None
+        self.esqueleto = None
 
     def __deepcopy__(self, memo):
         # copia directa (un punto de control copia cientos de puertas)
@@ -28,7 +32,7 @@ class Puerta:
         copia._cerrada_inicial = self._cerrada_inicial
         copia.indice = self.indice
         # avisa al esqueleto de la copia, no al de la partida
-        copia.al_cambiar = None if self.al_cambiar is None else deepcopy(self.al_cambiar, memo)
+        copia.esqueleto = None if self.esqueleto is None else deepcopy(self.esqueleto, memo)
         return copia
 
     @property
@@ -40,8 +44,8 @@ class Puerta:
         valor = bool(valor)
         if valor != self._cerrada:
             self._cerrada = valor
-            if self.al_cambiar is not None:
-                self.al_cambiar(self.indice)
+            if self.esqueleto is not None:
+                self.esqueleto.anotar_cambio(self.indice)
 
     def esta_cerrada(self):
         return self._cerrada

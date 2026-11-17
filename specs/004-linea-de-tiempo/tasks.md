@@ -34,7 +34,7 @@
 
 ## Phase 5: Mediciones (PR-301, PR-302)
 
-- [ ] T315 `bench/bench_linea_tiempo.py`: 5000 acciones; memoria y consulta con K = 10, 50, 200 y sin puntos de control; costo de un punto de control en la cripta de referencia; repetición del bench del retroceso (§5.6); elección del K por defecto (PR-301, PR-302).
+- [X] T315 `bench/bench_linea_tiempo.py`: 5000 acciones; memoria y consulta con K = 10, 50, 200 y sin puntos de control; costo de un punto de control en la cripta de referencia; repetición del bench del retroceso (§5.6); elección del K por defecto (PR-301, PR-302).
 
 ## Phase 6: Documentación
 

@@ -1,7 +1,7 @@
 from bench import (bench_agenda, bench_bitacora, bench_busqueda_cache, bench_cazadores, bench_ciclo,
                    bench_estructuras, bench_fichas_liberadas, bench_guardado, bench_mapa,
-                   bench_ordenamientos, bench_rastro, bench_resolubilidad, bench_retroceso,
-                   bench_umbral)
+                   bench_linea_tiempo, bench_ordenamientos, bench_rastro, bench_resolubilidad,
+                   bench_retroceso, bench_umbral)
 
 
 def principal():
@@ -35,6 +35,9 @@ def principal():
     print("
 ### Segunda parte: verificación de resolubilidad (P2 5.4)")
     bench_resolubilidad.principal()
+    print("
+### Segunda parte: línea de tiempo y puntos de control (P2 5.5)")
+    bench_linea_tiempo.principal()
 
 
 if __name__ == "__main__":

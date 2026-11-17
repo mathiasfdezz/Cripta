@@ -1,4 +1,8 @@
 class Evento:
+    # la agenda tiene cientos y los puntos de control los copian
+    __slots__ = ("tipo", "objetivo", "dato", "tiempo_siguiente", "secuencia", "cancelado",
+                 "en_agenda")
+
     def __init__(self, tipo, objetivo, dato=None):
         # tipo: qué va a pasar ("accion", "veneno", "rearme_trampa", ...)
         # objetivo: a quién le pasa ("jugador", "e-201", "t-17", ...)

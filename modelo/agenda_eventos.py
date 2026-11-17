@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from estructuras.min_heap import MinHeap
 from modelo.evento import Evento
 
@@ -10,6 +12,21 @@ class AgendaEventos:
         self._cancelados_en_heap = 0
         # recibe cómo deshacer cada cambio de la agenda (lo conecta el historial del retroceso)
         self.registrar = None
+
+    def __deepcopy__(self, memo):
+        """Para los puntos de control: la copia lleva solo los eventos vigentes. Los
+        cancelados se iban a descartar al llegar a la raíz y no cambian el orden de
+        los demás; así la copia es más chica."""
+        copia = AgendaEventos.__new__(AgendaEventos)
+        memo[id(self)] = copia
+        copia._heap = MinHeap()
+        for tiempo, secuencia, evento in self._heap._datos:
+            if not evento.cancelado:
+                copia._heap.insertar((tiempo, secuencia, deepcopy(evento, memo)))
+        copia._siguiente_secuencia = self._siguiente_secuencia
+        copia._cancelados_en_heap = 0
+        copia.registrar = None if self.registrar is None else deepcopy(self.registrar, memo)
+        return copia
 
     def programar(self, tiempo, evento):
         secuencia = self._siguiente_secuencia

@@ -81,7 +81,7 @@ class Esqueleto:
             for id_sala, direccion in self._grafo.salida_de:
                 puerta = self.puerta(id_sala, direccion)
                 puerta.indice = len(self._puertas_por_salida)
-                puerta.al_cambiar = self._anotar_cambio
+                puerta.esqueleto = self
                 self._puertas_por_salida.append(puerta)
             self._cambios = []
             self._desbordado = False
@@ -104,7 +104,7 @@ class Esqueleto:
         self._desbordado = False
         return cambios, desbordado
 
-    def _anotar_cambio(self, indice):
+    def anotar_cambio(self, indice):
         if self._desbordado or indice is None:
             return
         if len(self._cambios) >= MAX_CAMBIOS_ANOTADOS:
