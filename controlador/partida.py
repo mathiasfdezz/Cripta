@@ -32,7 +32,7 @@ class ControladorPartida:
     de las salas antes de que haga falta y avisa a la vista. No dibuja nada."""
 
     def __init__(self, datos, fuente, cache, vista, semilla, version_catalogo="",
-                 carpeta_partidas="partidas"):
+                 carpeta_partidas="partidas", esqueleto=None):
         self.datos = datos
         self.version_catalogo = version_catalogo
         self.carpeta_partidas = carpeta_partidas
@@ -48,7 +48,8 @@ class ControladorPartida:
         self._avisado_sin_presupuesto = False
         self._uso = UsoDeFichas(cache)
         self.ultimo_viaje = None   # (destino, pasos, motivo) del último «ir a»
-        self.esqueleto = self._cargar_esqueleto()
+        # la verificación de resolubilidad ya lo trae: no se piden las páginas dos veces
+        self.esqueleto = esqueleto if esqueleto is not None else self._cargar_esqueleto()
         jugador = Jugador(datos.sala_inicial, datos.jugador, Inventario(datos.inventario_max))
         self.estado = EstadoPartida(semilla, jugador, self.esqueleto, obtener_ficha=cache.obtener)
         self.estado.configurar_salida(datos.sala_salida, datos.llave_salida)

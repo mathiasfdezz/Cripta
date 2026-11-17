@@ -15,8 +15,10 @@ from adaptadores.error_fuente_datos import ErrorFuenteDatos
 from adaptadores.error_presupuesto import ErrorPresupuesto
 from adaptadores.tabla_puntajes import TablaPuntajes
 from controlador.partida import ControladorPartida
+from controlador.verificacion_cripta import VerificacionCripta
 from modelo.cache_catalogo import CacheCatalogo
 from vista.consola import Consola
+from vista.texto_resolubilidad import lineas_resolubilidad
 from vista.vista_replay import VistaReplay
 
 CARPETA_CACHE = "cache_catalogo"
@@ -50,6 +52,10 @@ def leer_argumentos(argv=None):
                         help="correr las mediciones y salir")
     parser.add_argument("--semilla", type=int,
                         help="semilla del azar (por defecto se elige una al azar)")
+    parser.add_argument("--verificar", metavar="CRIPTA",
+                        help="solo verificar si la cripta se puede ganar, sin jugar")
+    parser.add_argument("--forzar", action="store_true",
+                        help="jugar aunque la cripta no sea resoluble")
     return parser.parse_args(argv)
 
 
@@ -66,16 +72,33 @@ def preparar_cache(fuente, version_catalogo, tamano):
     return cache
 
 
-def jugar(cripta_id, fuente, tamano_cache, semilla, vista):
+def verificar(cripta_id, fuente):
+    """--verificar: solo la verificación, sin vista interactiva (FR-208)."""
     datos = fuente.datos_cripta(cripta_id)
     fuente.fijar_presupuesto(datos.presupuesto_solicitudes)
+    _, reporte = VerificacionCripta.ejecutar(fuente, datos)
+    for linea in lineas_resolubilidad(reporte, datos.id):
+        print(linea)
+    print(f"Solicitudes usadas: {fuente.solicitudes_realizadas()}")
+    return 0 if reporte.resoluble else 1
+
+
+def jugar(cripta_id, fuente, tamano_cache, semilla, vista, forzar=False):
+    datos = fuente.datos_cripta(cripta_id)
+    fuente.fijar_presupuesto(datos.presupuesto_solicitudes)
+    esqueleto, reporte = VerificacionCripta.ejecutar(fuente, datos)
+    vista.mostrar_resolubilidad(reporte, datos.id)
+    if not reporte.resoluble and not forzar:
+        print("La partida no inicia porque la cripta no se puede ganar. "
+              "Usa --forzar para jugarla igual.")
+        return 1
     version_catalogo = fuente.version_catalogo()
     cache = preparar_cache(fuente, version_catalogo, tamano_cache)
     if semilla is None:
         semilla = secrets.randbelow(10 ** 9)
 
     controlador = ControladorPartida(datos, fuente, cache, vista, semilla, version_catalogo,
-                                     CARPETA_PARTIDAS)
+                                     CARPETA_PARTIDAS, esqueleto)
     ruta = os.path.join(CARPETA_PARTIDAS, f"partida-{datetime.now():%Y%m%d-%H%M%S}.log")
     bitacora = BitacoraPartida(ruta)
     bitacora.crear(CabeceraPartida(datos.id, datos.version, version_catalogo, semilla))
@@ -132,13 +155,15 @@ def principal(argv=None):
     try:
         if args.replay:
             return reproducir(args.replay, fuente, args.cache_size)
+        if args.verificar:
+            return verificar(args.verificar, fuente)
         vista = Consola()
         # ninguna cripta queda escrita en el código: si no se indica, se elige de la lista
         cripta_id = args.cripta or vista.elegir_cripta(fuente.listar_criptas())
         if cripta_id is None:
             print("No se eligió ninguna cripta.")
             return 1
-        return jugar(cripta_id, fuente, args.cache_size, args.semilla, vista)
+        return jugar(cripta_id, fuente, args.cache_size, args.semilla, vista, args.forzar)
     except ErrorPresupuesto as error:
         print(f"[PRESUPUESTO] {error}")
     except ErrorFuenteDatos as error:

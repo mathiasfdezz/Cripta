@@ -51,6 +51,10 @@ class DescargadorOffline:
                 for trampa in contenido.get("trampas") or []:
                     self._agregar_sin_repetir(tipos, leer_campo(trampa, "tipo", operacion_lote))
 
+        llaves = self._conexion.obtener_json(f"/criptas/{cripta_id}/llaves",
+                                             f"llaves de {cripta_id}")
+        self._guardar(self._rutas.llaves(cripta_id), llaves)
+
         faltan = [s for s in ids_sala if s not in descargadas]
         if faltan:
             raise ErrorDatos(f"{operacion}: el API no devolvio el contenido de las salas {faltan}")

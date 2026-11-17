@@ -36,6 +36,9 @@ class ConexionFalsa:
             salas = ruta.split("=")[1].split(",")
             return {"contenido": [{"sala": int(s), "enemigos": [], "objetos": [f"itm_{s}"],
                                    "trampas": []} for s in salas]}
+        if ruta == "/criptas/c1/llaves":
+            return {"llaves": [{"id": "itm_llave", "sala": 2},
+                               {"id": "itm_otra", "sala": 3, "enemigo": "e-1"}]}
         raise AssertionError(f"ruta inesperada {ruta}")
 
 
@@ -100,6 +103,25 @@ class PruebasClienteRedConCopia(unittest.TestCase):
         self.assertIsNotNone(ID_SEGURO.match("cripta-04"))
         self.assertIsNone(ID_SEGURO.match("../c1"))
         self.assertIsNone(ID_SEGURO.match("c1/salas"))
+
+
+    def test_llaves_se_guardan_y_no_se_vuelven_a_pedir(self):
+        # FR-210: la ubicación de las llaves cuenta en el presupuesto y se persiste por versión
+        cliente, conexion = self.cliente()
+        cliente.datos_cripta("c1")
+        primeras = cliente.llaves("c1")
+        self.assertEqual([(l.id, l.sala, l.enemigo) for l in primeras],
+                         [("itm_llave", 2, None), ("itm_otra", 3, "e-1")])
+        self.assertEqual(conexion.rutas.count("/criptas/c1/llaves"), 1)
+        otro, conexion2 = self.cliente()
+        otro.datos_cripta("c1")
+        self.assertEqual(otro.llaves("c1"), primeras)
+        self.assertNotIn("/criptas/c1/llaves", conexion2.rutas)
+        # otra versión: se vuelven a pedir
+        tercero, conexion3 = self.cliente("v2")
+        tercero.datos_cripta("c1")
+        tercero.llaves("c1")
+        self.assertIn("/criptas/c1/llaves", conexion3.rutas)
 
 
 if __name__ == "__main__":

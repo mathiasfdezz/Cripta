@@ -1,6 +1,7 @@
 from modelo.enemigo import CAZADOR
 from vista.estilo import Estilo
 from vista.menu_acciones import ABRIR, ATACAR, MOVER, OBJETO, RECOGER, MenuAcciones
+from vista.texto_resolubilidad import lineas_resolubilidad
 
 ANCHO = 72
 
@@ -330,6 +331,16 @@ class Consola:
     def mostrar_ayuda(self):
         print(self._titulo("Cómo jugar"))
         print(AYUDA)
+
+    def mostrar_resolubilidad(self, reporte, cripta_id):
+        """FR-209: el reporte de resolubilidad antes del primer turno."""
+        lineas = lineas_resolubilidad(reporte, cripta_id)
+        print()
+        print(self._color(lineas[0], "negrita"))
+        for linea in lineas[1:]:
+            estilo = "ok" if reporte.resoluble else "alerta"
+            print(self._color(linea, estilo if linea.startswith("  ") and not
+                              linea.startswith("    ") else "tenue"))
 
     def mostrar_mapa(self, estado, esqueleto):
         """Mapa conocido (FR-107): salas exploradas con sus salidas, costos y puertas
