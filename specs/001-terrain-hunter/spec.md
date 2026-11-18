@@ -87,7 +87,7 @@ Como jugador, quiero identificar visualmente a los cazadores y conocer los costo
 - **FR-009**: La decisión del cazador se calcula desde cero en cada turno.
 - **FR-010**: La interfaz DEBE mostrar los costos de las salidas de la sala actual.
 - **FR-011**: La interfaz DEBE distinguir a los cazadores de otros tipos de enemigos.
-- **FR-012**: El costo base de otras acciones no cambia: usar objeto (50), recoger/soltar (25), abrir puerta (50), atacar/esperar (100). Solo cambia el costo de movimiento.
+- **FR-012**: El costo base de otras acciones no cambia: usar objeto (50), equipar (50), recoger/soltar (25), abrir puerta (50), atacar/esperar (100). Solo cambia el costo de movimiento.
 - **FR-013**: Si un efecto cambia la velocidad de un actor con una acción ya programada (incluida la que sigue a un movimiento por una salida costosa), el tiempo restante se reescala según P1 §2.3 y la reprogramación recibe un número de secuencia nuevo.
 - **FR-014**: Si existe una ruta abierta y `d <= rango`, el cazador se mueve un paso por una ruta de costo `d`; el costo de esa acción es el de la salida que atraviesa (FR-002).
 - **FR-015**: No existe límite de ocupación por sala; múltiples cazadores pueden coexistir en la misma sala y con el jugador, ejecutando cada uno su acción (ataque o movimiento) de forma independiente.
@@ -113,4 +113,6 @@ Como jugador, quiero identificar visualmente a los cazadores y conocer los costo
 
 - **Persistencia**: El costo de las salidas se descarga del esqueleto y se mantiene mientras la versión de la cripta no cambie.
 - **No apertura de puertas**: El cazador nunca abre puertas cerradas por sí mismo.
+- **Activación**: Como todo enemigo (P1 §2.4), un cazador no actúa hasta que el jugador entra por primera vez a su sala; desde entonces sigue activo aunque el jugador se aleje.
+- **Primera acción**: La primera acción de un enemigo recién activado se programa con costo 100, igual que en la primera parte; desde ahí, cada movimiento usa el costo de la salida atravesada.
 - **Costo de acción vs Intervalo**: Se mantiene la distinción entre el costo de la acción (que afecta al reloj de la próxima acción del actor) y el intervalo (que es el tiempo que realmente transcurre).

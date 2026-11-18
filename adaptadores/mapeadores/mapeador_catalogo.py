@@ -13,7 +13,8 @@ OBLIGATORIOS_POR_CLASE = (
     ("trampa", ("daño",)),
 )
 
-COMPORTAMIENTOS = ("guardián", "errante", "rastreador")
+COMPORTAMIENTOS = ("guardián", "errante", "rastreador", "cazador")
+CAZADOR = "cazador"
 # nombres probables del número dentro de un efecto, si el API lo manda como objeto
 CLAVES_DE_CANTIDAD = ("daño", "dano", "cantidad", "valor", "cura")
 
@@ -25,6 +26,10 @@ def ficha_catalogo_desde_json(datos):
         leer_campo(datos, campo, donde)
     if clase == "enemigo" and datos["comportamiento"] not in COMPORTAMIENTOS:
         raise ErrorDatos(f"{donde}: comportamiento desconocido '{datos['comportamiento']}'")
+    rango = datos.get("rango")
+    if clase == "enemigo" and datos["comportamiento"] == CAZADOR:
+        if isinstance(rango, bool) or not isinstance(rango, int) or rango < 0:
+            raise ErrorDatos(f"{donde}: un cazador necesita un rango entero no negativo, llegó {rango!r}")
 
     return FichaCatalogo(
         id=leer_campo(datos, "id", donde),
@@ -36,6 +41,7 @@ def ficha_catalogo_desde_json(datos):
         velocidad=datos.get("velocidad"),
         comportamiento=datos.get("comportamiento"),
         suelta=tuple(datos.get("suelta") or ()),
+        rango=rango,
         veneno=_cantidad_de_efecto(datos, "veneno", donde),
         regeneracion=_cantidad_de_efecto(datos, "regeneracion", donde),
         peso=datos.get("peso"),

@@ -1,3 +1,4 @@
+from modelo.enemigo import CAZADOR
 from vista.estilo import Estilo
 from vista.menu_acciones import ABRIR, ATACAR, MOVER, OBJETO, RECOGER, MenuAcciones
 
@@ -38,7 +39,7 @@ Atajos que funcionan siempre
   ?  esta ayuda                 q  salir
 
 Si prefieres escribir los comandos (entre puntos, el tiempo que cuestan):
-  n, s, e, o  (o norte, sur...)       moverse ............................ 100
+  n, s, e, o  (o norte, sur...)       moverse ......... el costo de la salida
   abrir <dir>   ej.: abrir este       abrir una puerta con su llave ....... 50
   atacar <n>    ej.: atacar 1         atacar al enemigo número n .......... 100
   esperar  (o z)                      dejar pasar el turno ................ 100
@@ -207,7 +208,7 @@ class Consola:
             destino = esqueleto.obtener(salida.sala_destino)
             nombre = destino.nombre if destino is not None else "sala desconocida"
             linea = (f"   {self._menu.nombre_direccion(salida.direccion):<6} -> {nombre} "
-                     f"({salida.sala_destino})")
+                     f"({salida.sala_destino})" + self._color(f"   costo {salida.costo}", "tenue"))
             puerta = esqueleto.puerta(sala.id, salida.direccion)
             if puerta is not None and puerta.esta_cerrada():
                 if estado.jugador.puede_abrir(puerta):
@@ -228,7 +229,7 @@ class Consola:
         for numero, enemigo in enumerate(enemigos, 1):
             print(f"   {numero}. {enemigo.nombre} {enemigo.instancia:<10} "
                   + self._color(self._barra(enemigo.vida, enemigo.vida_max), "peligro")
-                  + f" {enemigo.vida}/{enemigo.vida_max}  {enemigo.comportamiento or ''}")
+                  + f" {enemigo.vida}/{enemigo.vida_max}  " + self._tipo_enemigo(enemigo))
 
     def _mostrar_suelo(self, estado, id_sala):
         suelo = estado.suelo(id_sala)
@@ -382,6 +383,12 @@ class Consola:
             return "[" + "-" * ancho + "]"
         llenos = min(ancho, max(0, round(ancho * max(0, actual) / maximo)))
         return "[" + "#" * llenos + "-" * (ancho - llenos) + "]"
+
+    def _tipo_enemigo(self, enemigo):
+        # el cazador persigue por la ruta más barata: se marca aparte para que se note
+        if enemigo.comportamiento == CAZADOR:
+            return self._color(f"[CAZADOR, rango {enemigo.rango}]", "peligro")
+        return enemigo.comportamiento or ""
 
     @staticmethod
     def _uso(clase):

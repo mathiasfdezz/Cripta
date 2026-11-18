@@ -7,7 +7,7 @@ class _RegistroSala:
     def __init__(self, id_sala):
         self.id = id_sala
         self.tiempo = None    # última vez que el jugador estuvo aquí
-        self.vecinos = None   # [(direccion, puerta, registro_destino)], se enlaza al primer uso
+        self.vecinos = None   # [(direccion, puerta, registro_destino, costo)], se enlaza al primer uso
 
 
 class Rastro:
@@ -30,14 +30,24 @@ class Rastro:
 
     def salidas_abiertas(self, id_sala):
         """Salas vecinas a las que se puede pasar ahora, en orden N, S, E, O."""
-        return [destino.id for _, puerta, destino in self._vecinos(id_sala)
+        return [destino for destino, _ in self.pasos_abiertos(id_sala)]
+
+    def pasos_abiertos(self, id_sala):
+        """(sala vecina, costo de la salida) de las salidas abiertas, en orden N, S, E, O."""
+        return [(destino.id, costo) for _, puerta, destino, costo in self._vecinos(id_sala)
                 if puerta.esta_abierta()]
 
     def sala_mas_fresca(self, id_sala, ahora):
         """Vecina por salida abierta con el rastro más reciente y de menos de 400
         unidades. Si dos empatan gana el menor id. None si ninguna sirve."""
+        paso = self.paso_mas_fresco(id_sala, ahora)
+        return None if paso is None else paso[0]
+
+    def paso_mas_fresco(self, id_sala, ahora):
+        """Como sala_mas_fresca, pero devuelve (sala, costo de la salida que lleva a ella)."""
         mejor = None
-        for _, puerta, destino in self._vecinos(id_sala):
+        mejor_costo = None
+        for _, puerta, destino, costo in self._vecinos(id_sala):
             if not puerta.esta_abierta() or destino.tiempo is None:
                 continue
             # la caducidad se detecta al consultar, no se borra nada
@@ -46,7 +56,8 @@ class Rastro:
             if (mejor is None or destino.tiempo > mejor.tiempo
                     or (destino.tiempo == mejor.tiempo and destino.id < mejor.id)):
                 mejor = destino
-        return None if mejor is None else mejor.id
+                mejor_costo = costo
+        return None if mejor is None else (mejor.id, mejor_costo)
 
     def _registro(self, id_sala):
         registro = self._salas.buscar(id_sala)
@@ -66,5 +77,5 @@ class Rastro:
                     continue
                 registro.vecinos.append((salida.direccion,
                                          self._esqueleto.puerta(id_sala, salida.direccion),
-                                         self._registro(salida.sala_destino)))
+                                         self._registro(salida.sala_destino), salida.costo))
         return registro.vecinos

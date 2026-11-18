@@ -1,40 +1,33 @@
 # Quickstart: Validación de Terreno y cazador
 
-Este documento describe cómo validar manualmente la capacidad mediante el modo interactivo y `--bench`.
+Este documento describe cómo validar la capacidad con las pruebas, el modo interactivo y `--bench`.
 
-## Escenarios de Validación
+## Pruebas de aceptación
+
+```bash
+python -m unittest tests.test_movimiento_terreno tests.test_cazador tests.test_vista_terreno
+```
+
+Cada prueba cita en su nombre o comentario el requisito (FR-xxx) que verifica.
+
+## Escenarios de Validación Manual
 
 ### 1. Costo de Terreno e Intervalo
-1. Iniciar una cripta donde la primera salida tenga `costo: 200`.
-2. Moverse al Norte (suponiendo esa dirección).
-3. **Verificación**: El reloj del juego debe haber avanzado `200 * 100 // velocidad` unidades de tiempo.
-4. Comando: `python main.py --offline cripta-01`
+1. `python main.py cripta-02 --offline --semilla 1`
+2. La lista de salidas muestra el costo de cada una (la salida norte de la sala 1 cuesta 60).
+3. Moverse al norte: el reloj avanza `max(1, 60 * 100 // 100) = 60`.
 
 ### 2. Comportamiento del Cazador (Persecución)
-1. Ubicar un cazador a 3 salas de distancia.
-2. Pasar el turno (acción `esperar`).
-3. **Verificación**: El cazador debe haberse movido hacia la sala del jugador por la ruta de menor costo acumulado.
-4. Si hay dos rutas, una más corta en salas pero más cara, verificar que el cazador elige la de más salas pero menor costo.
+1. En la cripta de referencia (`python main.py cripta-06 --offline`) los cazadores aparecen marcados como tales en la lista de enemigos.
+2. Tras activarlos, pasar el turno (`esperar`): los que están dentro de su rango se acercan por la ruta de menor costo acumulado; los demás esperan.
 
-### 3. Rango del Cazador
-1. Alejarse del cazador hasta que el costo mínimo supere su `rango`.
-2. Pasar el turno.
-3. **Verificación**: El cazador debe permanecer en su sala y su acción registrada en la bitácora debe ser `esperar` (costo 100).
-
-### 4. Desempate por ID
-1. Crear un escenario (mediante un test unitario o cripta sintética) donde el cazador tenga dos vecinas que lleven al jugador con el mismo costo mínimo.
-2. **Verificación**: El cazador debe moverse a la sala con el ID numérico menor.
-
-### 5. Reescalado por Cambio de Velocidad (FR-013)
-1. Hacer que un actor se mueva por una salida de costo 500, de modo que su próxima acción quede programada.
-2. Antes de esa acción, aplicar un efecto que duplique la velocidad del actor.
-3. **Verificación**: el tiempo restante hasta su próxima acción se reescala como `max(1, (tiempo_siguiente - t) * velocidad_anterior // velocidad_nueva)` y la acción recibe un número de secuencia nuevo (FR-013).
+### 3. Rango, desempate y reescalado de velocidad
+Se verifican con las pruebas automáticas (`tests/test_cazador.py` y `tests/test_movimiento_terreno.py`), que construyen criptas mínimas con la ruta, el rango o la poción que cada caso necesita.
 
 ## Pruebas de Rendimiento (--bench)
 
-Ejecutar el benchmark de cazadores:
 ```bash
-python main.py --bench cazadores --num-cazadores 50 --rango 1000
+python main.py --bench
 ```
-- **Éxito**: El tiempo por ciclo de eventos debe ser `< 20ms`.
-- **Invalidación**: Probar con `--puertas-inestables` para verificar que el recálculo (cuando la caché falla) sigue dentro del presupuesto.
+- La sección «Cazadores» compara un cálculo por cazador con el cálculo compartido, con rango pequeño y grande, y reutilizar con recalcular siempre con puertas estables e inestables.
+- La sección «Ciclo» mide el ciclo entre dos decisiones del jugador en la cripta de referencia con todos sus cazadores activos. **Éxito**: menos de 20 ms.
