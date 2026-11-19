@@ -170,4 +170,178 @@ Corrige el plan de specs/001-terrain-hunter/ (plan.md, research.md y data-model.
 /speckit.analyze Revisa la consistencia entre spec.md, plan.md, research.md, data-model.md y tasks.md de specs/001-terrain-hunter. Verifica: cobertura de cada FR y PR por al menos una tarea y una prueba; escenarios de aceptación sin prueba; tareas sin requisito; contradicciones entre spec y plan; cualquier violación de la constitución, en especial el Principio I (estructuras prohibidas) y el Principio VII (spec sin estructuras ni algoritmos, plan sin reglas nuevas). Revisa en particular que FR-014 (límite inclusivo d <= rango) tenga una tarea de prueba propia. Solo informe: no modifiques ningún archivo.
 ```
 
-**Uso de la respuesta:** auditar la consistencia entre spec, plan y tareas; encontró huecos de prueba en FR-014, FR-001 y FR-004.
+**Uso de la respuesta:** auditar la consistencia entre spec, plan y tareas; encontró huecos de prueba en FR-014, FR-001 y FR-004.# Parte II - Prompts a Claude (claude.ai)
+
+## Prompt 13 · 15/11/2026 - 16/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Mensaje 1]
+Ya lo Cloud, la ahora es así. Ya entonces el proyecto ya lo entregamos, todo bien. Ahora el profe actualizó el API para un segundo proyecto y nos hizo instalar el Spec Kit, pero yo no tengo ni idea de cómo usarlo. Y ahorita te paso el enunciado del segundo proyecto y tal vez si me puedes volver a pasar el coso para que el API sea un JSON y pasártelo a ti para que tú lo veas. Pero sí, ocupo que me explique cómo usarlo y, y sí, qué prompt hacerle porque yo estoy ahorita al Spec Kit le metí el Google Gemini. Entonces, he visto que hay unos compañeros míos que lo dejan trabajar como por 4 horas y les hace casi que todo el proyecto. Entonces ocupo un mega prompt para hacer eso. Pero ahorita te paso el enunciado.
+
+[Mensaje 2]
+pero esos prompt solo hacen una pequena parte de todo los cambios que hay que hacer o lo hace todo, si hace una pequena parte perfecto
+
+[Mensaje 3]
+ese speckit ya va a hacer codigo?
+
+[Mensaje 4]
+y eso solito va haciendo lo de los prompts que pide el proyecto?
+```
+
+**Uso de la respuesta:** comprender el flujo de desarrollo dirigido por especificaciones con Spec Kit (constitution, specify, clarify, plan, tasks, analyze, implement), qué documento produce cada comando, en qué fase aparece el código y qué debe registrarse en la bitácora.
+
+---
+
+## Prompt 14 · 15/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Adjunto: enunciado de la Parte II en formato Markdown (Cripta - Parte II.md)]
+
+[Mensaje 1]
+antes de todo, que comandos corro en el cmd para verificar que todo este corriendo y el lugar indicado, deberia pasarte como esta el proyecto final que enviamos para la parte 1? y aparte pasame un link para volver a enviarte en formato json la api actualizada
+[Adjunto: openapi.json del API versión 1.1.0 y salida de los comandos de verificación]
+
+[Mensaje 2]
+ya se, ese archivo md que te mande esta en downloads, el original es un pdf, lo hice markdown para que consumiera menos tokens
+
+[Mensaje 3]
+vdd que en la carpeta cripta deberia haber "parte2cripta"
+```
+
+**Uso de la respuesta:** verificar el entorno de trabajo (pruebas de la Parte I, Spec Kit, agente), identificar los cambios del API actualizado (campos `costo` y `rango`, endpoint `/llaves`) y ubicar el enunciado dentro del repositorio.
+
+---
+
+## Prompt 15 · 15/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Adjunto: contenido de .specify/memory/constitution.md, versión 1.0.0]
+
+[Mensaje 1]
+eso lo tengo que correr en el folder de cripta?
+```
+
+**Uso de la respuesta:** contrastar la constitución del proyecto con los principios obligatorios del enunciado (§2.3 y §6.2) y obtener el texto de la enmienda 1.1.0 (separación entre especificación y plan, límites de rendimiento de la Parte II).
+
+---
+
+## Prompt 16 · 15/11/2026 - 16/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Mensaje 1]
+claude dime las instrucciones como a un chiquito y donde hacer las correcciones
+
+[Mensaje 2]
+me salio eso pero la cage y le di ctrl+c una vez de mas y ahora me sale esto
+[Adjunto: salida de Gemini CLI con la especificación generada]
+
+[Adjunto: salida de /speckit.clarify con la pregunta de aclaración]
+```
+
+**Uso de la respuesta:** revisar la especificación de terreno y cazador contra el enunciado, aplicar las correcciones necesarias (escenario de cambio de velocidad, FR-013, FR-014 y PR-001) y decidir la respuesta a la aclaración sobre varios cazadores en una sala.
+
+---
+
+## Prompt 17 · 16/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Adjunto: resumen generado por /speckit.plan y resultados de findstr sobre plan.md, research.md y data-model.md]
+
+[Mensaje 1]
+la segunda correcion todavia dice Ciclo de Eventos**: Validar el l├¡mite de 20 ms con la carga de 30+ cazadores.
+vuelvo a pegar el prompt a gemini?
+
+[Mensaje 2]
+y ya hize lo de 30+ cazadores a decenas, que le pego a gemini?
+[Adjunto: salida de PowerShell]
+```
+
+**Uso de la respuesta:** revisar el plan contra el enunciado y la constitución; de ahí salieron las correcciones sobre el reescalado de FR-013 sin `costo_base`, los índices densos con épocas y el uso de salidas entrantes sin asumir simetría del esqueleto.
+
+---
+
+## Prompt 18 · 16/11/2026 - 17/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Mensaje 1]
+ese ultimo findstr cambiar velocidad no devolvio nada
+[Adjunto: resultados de la cobertura de FR en tasks.md]
+
+[Adjunto: informe de /speckit.analyze]
+
+[Mensaje 2]
+1 cuando voy a hacer push y 2 que le digo a gemini que haga, sigue esperando que le responda esto "¿Deseas ejecutar el análisis de consistencia con /speckit.analyze antes de comenzar la implementación?"?
+```
+
+**Uso de la respuesta:** validar la cobertura de requisitos por tareas y pruebas, interpretar el informe de `analyze` y decidir qué hallazgos corregir en `tasks.md` antes de implementar (prueba del límite inclusivo de FR-014 y pruebas de FR-001 y FR-004).
+
+---
+
+## Prompt 19 · 15/11/2026 - 17/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Mensaje 1]
+como abro gemini, solo escribo gemini o copio todo lo que me ppaso?
+
+[Mensaje 2]
+deberia escoger la cuenta de la U o la personal?
+
+[Mensaje 3]
+cual escogo?
+si instalo antigravity cambiaria la cosa?
+
+[Mensaje 4]
+cuando voy a hacer el pullrequest?
+
+[Mensaje 5]
+puedes hacerme mensajes y para copiar prompts de este chat, los mas relevantes para ponerlo en el documento, creo que piden uno con el agente de ia que uno este usando y uno para el de gemini
+
+[Mensaje 6]
+que debo agregar a PROMPTS_LLM, sinceramente no he agregado nada de nada, nada de esta conversacion esta ahi
+
+[Mensaje 7]
+no pegue los prompt a claude en el documento de PROMPTSLLM, quiero que modifiques los prompts que te hice, que suenen un poco mas sofisticados, no tan tontos y no hagas 15, haz 7 resume todos los que te hice en esos 7
+```
+
+**Uso de la respuesta:** resolver la autenticación y la cuota de Gemini CLI, entender el flujo de Git (rama de la capacidad y pull request) y reconstruir esta bitácora. El mensaje 7 pidió reescribir los mensajes; se decidió agruparlos por tema conservando su texto original.
+
+---
+
+## Prompt 20 · 17/11/2026 - 18/11/2026
+**Herramienta:** Claude (claude.ai)
+
+```text
+[Mensaje 1]
+yo quiero hacer ya el commit del LLMPrompts, no he echo el pegado los prompts de las preguntas que te hc echo a ti
+
+[Mensaje 2]
+bno, en base al mensaje que me pasaron y te pase, que falta para terminar ya el proyecto, no he pegado los prompt del 13 al 19\
+
+[Mensaje 3]
+se entrega hoy a media noche
+[Adjunto: salida de PowerShell con las tareas pendientes de tasks.md]
+
+[Mensaje 4]
+a parte, los prompts del spec kit que sean solo 2, porque mathias ya hizo mucho,, solo dos para el otro y yo
+
+[Mensaje 5]
+readme.md
+no entendi que debo agregar agregar en decisiones.md
+[Adjunto: contenido actual de README.md]
+
+[Mensaje 6]
+claude sea serio, en la parte que dice copiar y llener llenelo ud, ud conoce el proyecto mejor yo, hazme uno para copiar directamente sin que yo haga nada, el profe dijo que el uso de ia era obligatorio en esta segunda parte
+[Adjunto: salida de uv tool list y de findstr sobre tests/test_cazador.py]
+
+[Mensaje 7]
+entonces que debes hacer, hacerme lo que debo agregar a DECISIONES.md y al README.md
+```
+
+**Uso de la respuesta:** planificar el cierre de la entrega (tareas T031 a T033, especificaciones de las capacidades restantes) y redactar la sección de terreno y cazador de `DECISIONES.md` y la actualización de `README.md`, a partir del plan, la investigación y las pruebas de la capacidad.

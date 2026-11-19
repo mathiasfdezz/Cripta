@@ -1,4 +1,4 @@
-# Tasks: Terreno y cazador
+﻿# Tasks: Terreno y cazador
 
 **Input**: Design documents from `/specs/001-terrain-hunter/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`)
 **Requirements Coverage**: FR-001 a FR-015, PR-001.
@@ -104,9 +104,9 @@
 
 **Purpose**: Registro de decisiones de diseño, manual de usuario y bitácora de prompts.
 
-- [ ] T031 Redactar la sección "Terreno y cazador" en `DECISIONES.md` documentando las alternativas medidas, justificación matemática, evidencia empírica de `--bench` y análisis de complejidad $O(R + E_R \log R)$.
-- [ ] T032 Actualizar `README.md` documentando los nuevos comandos de ejecución, opciones de `--bench` para cazadores y la forma de correr las pruebas de aceptación con `python -m unittest`.
-- [ ] T033 Registrar en `PROMPTS_LLM.md` los prompts de especificación, clarificación, planificación y tareas ejecutados para esta capacidad.
+- [x] T031 Redactar la sección "Terreno y cazador" en `DECISIONES.md` documentando las alternativas medidas, justificación matemática, evidencia empírica de `--bench` y análisis de complejidad $O(R + E_R \log R)$.
+- [x] T032 Actualizar `README.md` documentando los nuevos comandos de ejecución, opciones de `--bench` para cazadores y la forma de correr las pruebas de aceptación con `python -m unittest`.
+- [x] T033 Registrar en `PROMPTS_LLM.md` los prompts de especificación, clarificación, planificación y tareas ejecutados para esta capacidad.
 
 ---
 

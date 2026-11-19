@@ -660,3 +660,298 @@ Explorar toda la cripta grande costó entre 25 y 26 solicitudes, de ellas 15 de 
 11. **El límite de 20 ms por ciclo.** Con cientos de enemigos activos, el ciclo entre dos decisiones del jugador pasaba de 20 ms. Optimizamos el motor: el reloj se anota una sola vez por acción en el historial, el heap mueve un "hueco" en vez de intercambiar en cada nivel, y le pedimos al recolector de basura de Python que deje de revisar lo que vive toda la partida (gc.freeze). Con eso cumplimos siempre hasta unos 400 enemigos activos a la vez (alrededor de 500 eventos por ciclo). Con más, los peores casos se ven afectados también por el sistema operativo, y lo dejamos documentado como límite conocido.
 
 12. **El tiempo.** Todo esto se hizo en pocas semanas y en paralelo con otras materias, así que tuvimos que priorizar: primero lo que pide la rúbrica, después las mejoras. Lo que no alcanzamos a implementar (como dormir a los enemigos que no tienen nada que hacer, para bajar más el tiempo por ciclo) quedó anotado como mejora futura.
+
+
+---
+
+# Parte II · Terreno y cazador
+
+**Especificación:** `specs/001-terrain-hunter/spec.md` (requisitos FR-001 a FR-015 y PR-001) · **Plan:** `specs/001-terrain-hunter/plan.md`, con `research.md` y `data-model.md` · **Tareas:** `specs/001-terrain-hunter/tasks.md` · **Análisis de consistencia:** `specs/001-terrain-hunter/analisis.md`.
+
+**Cómo se hizo.** La capacidad se desarrolló con GitHub Spec Kit: especificación, aclaración, plan, tareas, análisis e implementación, cada fase confirmada en Git antes de la siguiente. Los prompts a las herramientas de IA (Gemini CLI, Claude Code y Claude) están en `PROMPTS_LLM.md`.
+
+**Qué resuelve.** Cada salida puede tener un costo (nulo vale 100) que fija cuánto tarda moverse por ella, y aparece un enemigo nuevo, el cazador, que persigue al jugador por la ruta de menor costo acumulado dentro de su rango. Los tres problemas de diseño son la búsqueda de esa ruta, cuándo se puede reutilizar y cómo se integra el costo en el reloj virtual.
+
+**Resumen de lo medido.** Las cifras de cada comparación están en el Apéndice A al final de este documento: es la salida íntegra de `python main.py --bench` de la corrida de entrega.
+
+---
+
+## 1. Ruta de costo mínimo del cazador
+
+**Problema.** En su turno, el cazador ataca si comparte sala con el jugador. Si no, calcula el costo mínimo `d` de llegar a la sala actual del jugador usando solo salidas abiertas en ese instante; espera si no hay ruta o si `d > rango`; si no, avanza un paso por una ruta de costo `d`, y ante empate elige la sala vecina de menor id (§3.2). La decisión debe ser siempre la que daría un cálculo desde cero, y el ciclo de eventos completo debe quedar bajo 20 ms con decenas de cazadores activos (PR-001).
+
+Las operaciones reales son dos: calcular distancias hacia la sala del jugador (poco frecuente: solo cuando cambia el jugador o las puertas) y consultar la distancia de las vecinas de un cazador (en cada turno de cada cazador, con a lo sumo cuatro salidas por sala). Todos los cazadores persiguen el mismo destino.
+
+**Alternativas consideradas.**
+
+1. *Un recorrido por cazador*, desde la sala de cada uno hasta el jugador. Se descartó porque repite el mismo trabajo: todos los cazadores tienen el mismo destino, así que con N cazadores se hacen N búsquedas por ciclo donde alcanza una. Se midió (`bench/ruta_por_cazador.py`) como alternativa descartada.
+2. *Búsqueda por niveles, sin costos.* Se descartó por incorrecta: minimiza el número de salas y no el costo, y el Apéndice B del enunciado pide justamente elegir la ruta de más salas pero menor costo.
+3. *Búsqueda dirigida con heurística (A\*).* Se descartó: gana cuando hay un único par origen-destino, pero aquí es un destino común para muchos orígenes, y una sola búsqueda desde el destino los atiende a todos.
+4. *Un recorrido compartido desde la sala del jugador* (elegida).
+
+**Decisión.** Un recorrido de costo mínimo (Dijkstra implementado en el proyecto, sin bibliotecas) que parte de la sala del jugador y se propaga hacia afuera, y se detiene cuando supera el rango máximo de los cazadores activos. Una sola corrida deja la distancia al jugador de todas las salas dentro del rango, y cada cazador la consulta.
+
+- **Cola de prioridad:** el `MinHeap` de `estructuras/` de la Parte I, reutilizado.
+- **Salas por índice denso:** los ids de sala no son contiguos ni empiezan en 1, así que al cargar la cripta, una sola vez, se construye una correspondencia de id a un índice entero de 0 a V-1 con el `VectorOrdenado` de la Parte I (sin `dict`). Cada salida guarda ya resueltos los índices de su origen y su destino, y el recorrido trabaja con listas indexadas por ese entero: no consulta la correspondencia por cada arista.
+- **Reinicio sin recorrer la cripta:** un contador de época por sala indica si su distancia pertenece a la corrida actual, así preparar una corrida nueva cuesta O(1) y no O(V).
+- **Salidas dirigidas, sin suponer simetría:** §3.1 iguala el costo en ambos sentidos, pero no garantiza que exista la salida inversa ni que su puerta esté en el mismo estado (el API describe cada salida como dirigida, con su propio estado). Por eso, al cargar la cripta se construye, para cada sala, la lista de salidas *entrantes* (origen, costo y referencia a la puerta, para leer su estado actual), y el recorrido que parte del jugador propaga por ellas.
+- **Desempate:** terminado el recorrido, un cazador en la sala `u` examina sus salidas y elige la sala vecina `v` con `costo(u,v) + dist(v) = dist(u)` y menor id.
+
+Módulos principales: `modelo/grafo_cripta.py` (índices densos y salidas entrantes) y `modelo/buscador_rutas.py` (búsqueda).
+
+**Complejidad.** Construcción de salidas entrantes e índices: O(V + E), una vez por cripta. Recorrido: O(R + E_R log R), con R las salas dentro del rango máximo y E_R sus salidas entrantes; no depende del tamaño total de la cripta. Preparar la corrida: O(1). Decisión de un cazador: O(1), porque examina a lo sumo cuatro salidas.
+
+**Evidencia empírica.** Apéndice A, secciones de la ruta del cazador: un cazador frente a muchos, y cálculo individual (alternativa descartada) frente a compartido. Las pruebas `tests/test_cazador.py` verifican la corrección sobre los casos del Apéndice B (ruta de menos salas y mayor costo, desempate por id, rejilla con muchísimas rutas mínimas, salidas de un solo sentido, puertas cerradas en un solo sentido, sala intermedia sin contenido cargado).
+
+**Límites conocidos.** Si el rango máximo cubre casi toda la cripta, R se acerca a V y cada recorrido cuesta como recorrer la cripta completa. La correspondencia de ids supone un esqueleto que no cambia durante la partida, como en el servicio actual. El cálculo compartido supone un único objetivo: con varios jugadores habría un mapa por jugador.
+
+**¿Coincide con el plan original?** La decisión coincide con el plan vigente. El primer borrador del plan tenía dos errores que se corrigieron antes de implementar, por revisión contra el enunciado y por el informe de consistencia, no por una medición: suponía simetría del esqueleto (solo el costo es simétrico) y expresaba la complejidad en función de todas las salas y no de la región dentro del rango.
+
+---
+
+## 2. Invalidación de rutas
+
+**Problema.** Calcular el mapa de distancias en cada turno de cada cazador es correcto pero caro. Se quiere reutilizarlo entre turnos sin cambiar nunca la decisión (§3.2, equivalencia observable): reutilizar un cálculo anterior solo es válido si se puede demostrar que el resultado es idéntico al de calcular desde cero.
+
+**Alternativas consideradas.**
+
+1. *Recalcular siempre*, en cada decisión. Es trivialmente correcto y es la alternativa descartada; se midió contra la reutilización (Apéndice A).
+2. *Reutilizar con invalidación por eventos* (elegida).
+
+**Decisión.** El mapa se marca como *sucio* cuando ocurre algo que puede cambiar la respuesta, y se recalcula bajo demanda en la siguiente consulta.
+
+**Argumento de equivalencia.** La decisión de un cazador depende solo del esqueleto (estático), del estado actual de las puertas, de la sala del jugador y del rango máximo de los cazadores activos (que acota la búsqueda). Si ninguna de esas variables cambió desde el último cálculo, el resultado es idéntico por construcción. Eventos entre dos turnos de un cazador:
+
+| Evento | ¿Invalida? | Razón |
+|---|---|---|
+| Se abre o se cierra una puerta | Sí | cambia la conectividad. Un refinamiento no invalida si la salida queda fuera de la región ya asentada, porque no puede cambiar ninguna distancia calculada |
+| El jugador cambia de sala | Sí | cambia el origen del recorrido |
+| Aparece o muere un cazador con rango distinto del máximo vigente | Sí | cambia el umbral que acota la búsqueda |
+| Otro actor cambia de sala | No | no altera costos, puertas ni destino |
+| Cambio de velocidad de un actor | No | no altera costos, puertas ni destino |
+| Daño, muerte u otras acciones sin cambio de rango máximo | No | no alteran la topología ni el destino |
+
+**Complejidad.** Marcar el mapa como sucio: O(1). Cada recálculo cuesta lo mismo que la búsqueda de la sección 1; en un tramo sin invalidaciones, el costo de las decisiones es el de consultar las vecinas.
+
+**Evidencia empírica.** Apéndice A, sección de invalidación: reutilización contra recálculo siempre, con puertas estables y con puertas inestables (que cambian cada pocos turnos). Verificación de corrección: `tests/test_cazador.py` compara la decisión con el cálculo desde cero en una rejilla con costos variados, ocho cazadores y puertas que se abren y se cierran, y comprueba que una puerta fuera de la región asentada no obliga a recalcular.
+
+**Límites conocidos.** Con puertas que cambian en casi cada turno la reutilización no ahorra nada y cuesta lo mismo que recalcular siempre. Si una regla futura hiciera que otros actores afectaran el costo o la transitabilidad de las salidas (por ejemplo, enemigos que bloquean), habría que ampliar la tabla de eventos que invalidan.
+
+**¿Coincide con el plan original?** Sí. El plan inicial era enumerar los eventos con una justificación; se completó con la tabla y la cláusula del rango máximo tras el análisis de consistencia, no por una medición.
+
+---
+
+## 3. Costo de las salidas y reescalado de la velocidad
+
+**Problema.** El costo de moverse es el de la salida (nulo vale 100, entero mayor o igual que 1) y el intervalo hasta la próxima acción es `max(1, costo_salida * 100 // velocidad)` para todos los actores; las demás acciones conservan su costo (FR-012). Si un efecto cambia la velocidad de un actor con una acción ya programada, el tiempo restante se reescala según P1 §2.3 (FR-013).
+
+**Alternativas consideradas.**
+
+1. *Calcular el costo en la vista o en el controlador.* Se descartó porque rompe la separación MVC: el costo es una regla del juego y vive en el modelo.
+2. *Guardar el costo de la salida en el evento y recalcular el tiempo restante con él.* Se descartó: la fórmula de P1 §2.3 conserva el progreso a partir del tiempo restante, que ya incluye el costo del terreno; agregarlo no cambia el resultado observable y obligaría a modificar un método ya probado de la agenda.
+3. *Guardar el costo en la salida, centralizar la fórmula en el modelo de movimiento y reutilizar la agenda de la Parte I sin modificarla* (elegida).
+
+**Decisión.** La salida guarda su costo (valor 100 si el servicio no lo declara o es nulo). La fórmula del intervalo está en un solo lugar del modelo. `AgendaEventos.cambiar_velocidad` ya implementa `max(1, (tiempo_siguiente - t) * velocidad_anterior // velocidad_nueva)`; se reutiliza sin cambios y esta capacidad solo agrega la prueba que lo verifica tras un movimiento costoso. La vista muestra el costo de cada salida y marca a los cazadores.
+
+**Complejidad.** Calcular un intervalo: O(1). Reescalar: el costo de reprogramar un evento en la agenda de la Parte I; no depende del costo de la salida.
+
+**Evidencia empírica.** `tests/test_movimiento_terreno.py` (intervalos con velocidades altas y bajas, intervalo mínimo 1, reescalado tras un movimiento por una salida costosa, costos de las demás acciones sin cambios) y `tests/test_vista_terreno.py` (costos visibles, cazadores distinguibles). Las mediciones de la agenda con la carga nueva están en el Apéndice A.
+
+**Límites conocidos.** El costo es entero y no varía durante la partida: si una regla futura lo hiciera depender del tiempo o de otros actores, la fórmula del intervalo tendría que recibirlo en el momento de moverse.
+
+**¿Coincide con el plan original?** No exactamente. El primer borrador del plan proponía pasar el costo de la salida como `costo_base` a `cambiar_velocidad`. Se corrigió antes de implementar, por revisión contra la fórmula de P1 §2.3 y no por una medición, y el plan vigente reutiliza el método sin modificarlo.
+
+---
+
+## 4. Mediciones de la Parte I repetidas con la carga nueva (§5.6)
+
+Se repitieron con cazadores las mediciones de la agenda de eventos y del ciclo completo entre dos decisiones del jugador (límite de 20 ms), junto con el resto de las secciones de la Parte I; el resultado completo está en el Apéndice A. Esta capacidad no modificó ninguna estructura de la Parte I (`estructuras/` no cambió) y reutiliza el `MinHeap` y el `VectorOrdenado`, por lo que las decisiones de la Parte I siguen vigentes. Las mediciones anteriores de cada sección están en los apartados de la Parte I de este documento: el "antes" es esa tabla y el "después" es el Apéndice A.
+
+**Límite conocido.** Las pruebas de estrés con criptas sintéticas mayores que la de referencia pueden superar los 20 ms por ciclo; como establece el Principio VI de la constitución, esos casos se documentan como límite conocido y no como condición de aceptación. La causa es que el costo del ciclo crece con el número de eventos programados por ciclo (acciones de todos los enemigos activos).
+
+---
+
+## 5. Trazabilidad de la capacidad
+
+| Requisitos | Pruebas | Medición |
+|---|---|---|
+| FR-001, FR-004 (costo de la salida, rango del cazador) | `tests/test_mapeador_salas.py`, `tests/test_mapeador_catalogo.py` | |
+| FR-002, FR-003, FR-012, FR-013 (costo, intervalo, reescalado) | `tests/test_movimiento_terreno.py` | |
+| FR-005 a FR-009, FR-014, FR-015 (comportamiento del cazador) | `tests/test_cazador.py` | `bench/bench_cazadores.py`, `bench/ruta_por_cazador.py` |
+| FR-010, FR-011 (vista) | `tests/test_vista_terreno.py` | |
+| PR-001 (ciclo de 20 ms) | | `bench/bench_cazadores.py` |
+
+Para recorrer un requisito: `findstr /n /c:"FR-014" tests\test_cazador.py` muestra el escenario y la prueba que lo cita.
+
+## Apéndice A - Salida de python main.py --bench (corrida del 18/11/2026)
+```text
+### Agenda de eventos (4.1)
+== Agenda: sacar el siguiente y reprogramarlo (us por operacion) ==
+ eventos         heap        lista lista/heap
+     100         3.16        19.35        6.1
+     300         3.37        59.94       17.8
+    1000         5.34       152.37       28.5
+    3000         3.93       699.17      177.9
+
+### Busqueda en la cache (4.3 y 4.4)
+== Buscar una ficha: vector ordenado vs arbol binario simple (us por busqueda) ==
+fichas llegada          vector        arbol   altura arbol
+    25 al azar            2.01         1.25              8
+    25 ordenada           2.39         2.93             25
+   250 al azar            3.22         2.16             17
+   250 ordenada           3.35        24.53            250
+  2000 al azar            4.65         3.34             26
+  2000 ordenada           4.87       195.81           2000
+
+== Recuperar una ficha liberada de memoria (tope 25) ==
+desde disco (us por ficha)           19097.7
+solicitudes de red al recuperar            0
+desde la red (enunciado 3.4)      ~400000 us por solicitud
+
+### Estructuras (cache, inventario, agenda)
+== Cache de catalogo (us por consulta, tope 25) ==
+acierto (en memoria)          10.07
+fallo (desaloja y pide)       49.20
+
+== Inventario: soltar (us) segun la posicion ==
+n=   10  frente        5.28
+n=   10  medio         2.30
+n=   10  fondo         2.42
+n= 1000  frente       10.10
+n= 1000  medio         7.44
+n= 1000  fondo         2.69
+
+== Agenda de eventos (us por programar + sacar) ==
+n=  300        4.74
+n= 3000        5.75
+
+### Retroceso (4.6)
+== Historial de retroceso (por accion del jugador) ==
+escenario                    accion (us)   deshacer (us)  cambios guardados
+100 salas, 100 enemigos            966.9           255.1              265.5
+400 salas, 400 enemigos           3860.1           977.0              964.5
+(se guarda solo lo que cambio en cada intervalo, nunca una copia del estado)
+
+### Rastro (4.7)
+== Decision de un rastreador: vecinas de su sala vs BFS por la cripta (us) ==
+   salas   1a vez en sala    sala ya vista            BFS  BFS/vista
+     100            16.12             1.66        1335.24        805
+     900            42.28             1.85       38328.18      20749
+    2500           100.81             2.61      225784.96      86632
+
+### Bitacora en pantalla (4.8)
+== Bitacora de 20 mensajes: costo de agregar y memoria tras 100000 mensajes ==
+estructura                     us/agregar          bytes         desplaza
+fila circular (la nuestra)          0.212            216               no
+lista con pop(0)                    0.165            248   19 por mensaje
+lista que crece                     0.109         800984               no
+
+### Ordenamientos (4.9)
+== Tiempo (ms) por tamano y tipo de dato, clave barata ==
+datos           n    insercion        merge  gana
+aleatorio       5       0.0016       0.0041  insercion
+ordenado        5       0.0009       0.0037  insercion
+inverso         5       0.0019       0.0042  insercion
+casi 2%         5       0.0009       0.0036  insercion
+casi 10%        5       0.0009       0.0037  insercion
+aleatorio      10       0.0041       0.0088  insercion
+ordenado       10       0.0014       0.0078  insercion
+inverso        10       0.0059       0.0088  insercion
+casi 2%        10       0.0015       0.0077  insercion
+casi 10%       10       0.0015       0.0077  insercion
+aleatorio      20       0.0141       0.0214  insercion
+ordenado       20       0.0028       0.0180  insercion
+inverso        20       0.0204       0.0192  merge
+casi 2%        20       0.0029       0.0180  insercion
+casi 10%       20       0.0036       0.0186  insercion
+aleatorio      50       0.0614       0.0649  insercion
+ordenado       50       0.0067       0.0530  insercion
+inverso        50       0.1255       0.0676  merge
+casi 2%        50       0.0136       0.0565  insercion
+casi 10%       50       0.0159       0.0573  insercion
+aleatorio     200       0.9649       0.3381  merge
+ordenado      200       0.0278       0.3047  insercion
+inverso       200       2.0501       0.2815  merge
+casi 2%       200       0.1062       0.2912  insercion
+casi 10%      200       0.2665       0.3038  insercion
+aleatorio    1000      29.5374       2.3581  merge
+ordenado     1000       0.1555       1.6485  insercion
+inverso      1000      55.4893       1.6936  merge
+casi 2%      1000       1.6618       1.9100  insercion
+casi 10%     1000       6.5190       2.1703  merge
+
+== Llamadas a clave() (proxy de comparaciones costosas), n=1000 ==
+aleatorio  insercion=  253101  merge=   17440
+ordenado   insercion=    1998  merge=    9864
+inverso    insercion=  500499  merge=   10088
+casi 2%    insercion=   13202  merge=   13670
+casi 10%   insercion=   60062  merge=   16190
+
+== Tiempo (ms) con clave COSTOSA, n=200 ==
+aleatorio  insercion=   15.346  merge=    3.581
+ordenado   insercion=    0.538  merge=    2.121
+inverso    insercion=   27.702  merge=    2.346
+casi 2%    insercion=    0.931  merge=    2.409
+casi 10%   insercion=    3.576  merge=    3.218
+
+== Alrededor del umbral de tamano (50) y de desorden (5%): us por ordenamiento ==
+datos           n    insercion        merge       gana      elige
+aleatorio      25        22.40        29.63  insercion  insercion
+aleatorio      50        71.50        70.10      merge  insercion
+aleatorio      75       202.43       129.98      merge      merge
+aleatorio     100       262.56       200.22      merge      merge
+aleatorio     125       513.63       247.59      merge      merge
+aleatorio     150       700.98       284.35      merge      merge
+inverso        25        37.53        26.19      merge  insercion
+inverso        50       132.17        60.43      merge  insercion
+inverso        75       330.20       103.71      merge      merge
+inverso       100       585.85       137.19      merge      merge
+inverso       125       885.23       176.53      merge      merge
+inverso       150      1297.28       363.07      merge      merge
+casi 2%        25         6.43        32.09  insercion  insercion
+casi 2%        50        17.35        95.52  insercion  insercion
+casi 2%        75        14.00        89.72  insercion  insercion
+casi 2%       100        30.68       134.40  insercion  insercion
+casi 2%       125        55.37       187.66  insercion  insercion
+casi 2%       150        37.88       205.14  insercion  insercion
+
+### Guardado binario vs JSON (4.10)
+   salas |    bin (B)   json (B) | carga bin ms carga json ms |  1 sala bin ms 1 sala json ms
+      20 |       2823       4683 |        0.194        0.115 |         0.0601          0.104
+     200 |      26914      44815 |        0.992        0.565 |         0.0579          0.527
+    2000 |     273067     453472 |        9.976        5.522 |         0.0708          5.627
+   20000 |    2811835    4642818 |      156.478       83.422 |         0.1418         75.626
+
+### Presupuesto de procesamiento (P1 5.2 y P2 6.1, con la carga nueva)
+== Ciclo completo entre dos decisiones del jugador (ms, limite 20) ==
+escenario                       promedio       p95    maximo    eventos  us/evento  cumple
+cripta-06 (36 cazadores)            3.20      4.91      7.03         82       38.9      si
+cripta-06 moviÚndose                4.36      6.19     10.84        120       36.4      si
+100 salas, 100 enemigos             3.75      5.28     15.88        121       31.0      si
+400 salas, 400 enemigos             6.42     10.79     32.11        483       13.3     p95
+625 salas, 600 enemigos             9.20     12.96     28.77        724       12.7     p95
+900 salas, 900 enemigos            15.76     23.98     55.74       1086       14.5      NO
+900 salas, 60 cazadores            23.73     53.57     67.05       1020       23.3      NO
+(eventos = eventos programados por ciclo; 'p95': cumple en el 95% de los ciclos)
+
+### Segunda parte: ruta del cazador e invalidaci¾n (P2 5.1 y 5.2)
+== Ruta del cazador: un cßlculo compartido frente a uno por cazador (ms por ronda de decisiones, 900 salas) ==
+cazadores  rango     compartido   individual      raz¾n salas/compart.   salas/indiv.
+1          300            0.200        0.165        0.8             24             19
+10         300            0.237        1.843        7.8             25            217
+30         300            0.269        5.709       21.2             26            653
+60         300            0.263       10.053       38.2             23           1216
+1          2400           4.776        0.431        0.1            792             70
+10         2400           4.720        4.009        0.8            851            748
+30         2400           6.867       14.712        2.1            836           2030
+60         2400           7.232       36.308        5.0            843           4611
+(las dos alternativas deciden exactamente lo mismo; se verifica en cada ronda)
+
+== Invalidaci¾n: reutilizar el cßlculo frente a recalcular siempre (30 cazadores, rango 2400, 300 rondas) ==
+puertas                estrategia         ms/ronda   cßlculos reutilizados
+estables (1 c/50)      reutilizar            2.093         79         8921
+estables (1 c/50)      recalcular          149.152       9000            0
+inestables (8/ronda)   reutilizar            2.146        300         8700
+inestables (8/ronda)   recalcular           94.988       9000            0
+(en los dos casos las decisiones de todas las rondas son idÚnticas)
+```
