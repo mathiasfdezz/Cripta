@@ -271,3 +271,152 @@ Revisa el proyecto Cripta (ZIP, enunciado de la segunda parte y repositorio de G
 ```
 
 **Uso de la respuesta:** diagnóstico del estado del proyecto contra el enunciado y cambio del K por defecto de la línea de tiempo de 25 a 10 (`modelo/linea_tiempo.py`, `README.md`, `DECISIONES.md`), según las mediciones del bench.
+
+## Prompt 25 · 15/11/2026
+**Herramienta:** Gemini CLI (modo Auto)
+
+```text
+/speckit.constitution Enmienda MINOR a la versión 1.1.0, fecha 2026-11-15. Conserva todos los principios actuales y haz solo estos cambios:
+
+1. Principio I: añade que no se permite list.sort() ni sorted() en los ordenamientos evaluados. Reemplaza la frase sobre list por: "list se permite como almacenamiento contiguo de bajo nivel, sin sustituir a la estructura que resuelve un problema evaluado". Añade: "Un plan o tarea generado que contradiga este principio es un defecto del grupo y se corrige antes de implementar; las dependencias que proponga un plan se revisan".
+
+2. Principio VII: añade que spec.md contiene reglas del juego, historias de usuario, escenarios de aceptación y requisitos numerados, y NO contiene nombres de estructuras de datos, algoritmos, clases ni módulos; que plan.md contiene estructuras, alternativas consideradas, complejidad, módulos afectados y mediciones planificadas, y NO contiene reglas nuevas; que cada caso del Apéndice B del enunciado aparece como escenario de aceptación; que cada escenario tiene al menos una prueba automatizada o un partida.log de reproducción que cita el FR; y que cada comando de spec-kit con texto propio se registra en PROMPTS_LLM.md.
+
+3. Principio VI: añade los límites de verificación de resolubilidad 200 ms (cripta publicada más grande), consulta historia 50 ms (partida de 5000 acciones, K por defecto) y un paso de "ir a" 5 ms (mapa conocido completo de la cripta de referencia). Añade que un incumplimiento medido en una cripta sintética mayor se documenta como límite conocido en DECISIONES.md con su causa.
+
+Actualiza la versión, la fecha de última enmienda y el Sync Impact Report.
+```
+
+**Uso de la respuesta:** enmendar la constitución a la versión 1.1.0 (separación spec/plan, límites de rendimiento de la Parte II).
+
+---
+
+## Prompt 26 · 15/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+/speckit.specify Capacidad "terreno y cazador". Reglas: @docs/enunciado_parte2.md §3.1, §3.2 y Apéndice B (sección Terreno y cazador). Cubre: (1) costo por salida (entero >= 1, 100 si no se declara o es null, igual en ambos sentidos); mover cuesta el costo de la salida e intervalo = max(1, costo_salida*100//velocidad) para todos los actores; atacar, esperar y demás acciones no cambian; errantes y rastreadores solo cambian lo que tarda su movimiento. (2) Cazador: ficha con rango; reglas en orden (ataca si comparte sala; si no, costo mínimo d por salidas abiertas en ese instante; espera con costo 100 si no hay ruta o d > rango; si no, un paso por una ruta de costo d); desempate: la vecina de menor id; conoce esqueleto completo y puertas actuales, no le afecta la niebla ni el contenido descargado; no abre puertas; su decisión equivale siempre a calcular desde cero. (3) La vista muestra costos de las salidas de la sala actual y distingue cazadores. Incluye los 7 casos del Apéndice B de esta capacidad como escenarios de aceptación, y el requisito de 20 ms por ciclo con decenas de cazadores activos.
+
+Estilo: describe reglas del juego, historias de usuario, requisitos funcionales con id (FR-xxx), requisitos de rendimiento y escenarios Dado/Cuando/Entonces. NO nombres estructuras de datos, algoritmos (Dijkstra, BFS, etc.), clases ni módulos. No inventes reglas que no estén en el enunciado: marca lo ambiguo como [NEEDS CLARIFICATION].
+```
+
+**Uso de la respuesta:** generar la especificación de la capacidad "terreno y cazador" (specs/001-terrain-hunter/spec.md).
+
+---
+
+## Prompt 27 · 15/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+La escritura anterior de specs/001-terrain-hunter/spec.md fue cancelada. Vuelve a generarla y guardarla con las mismas historias y escenarios, aplicando estas correcciones:
+1) Elimina la suposición "Frecuencia de actualización / en tránsito": el movimiento es instantáneo y el cazador decide desde cero en cada turno.
+2) Corrige los costos: usar un objeto cuesta 50, recoger y soltar 25, abrir una puerta 50 (P1 §2.3); solo cambia el costo de moverse.
+3) Reemplaza "rango de visión/acción" por "rango (umbral de costo)".
+4) Quita la palabra "grafo" y cualquier estructura de datos o algoritmo; usa "esqueleto".
+5) Convierte "puerta que se cierra entre dos turnos" y "cambia la velocidad de un actor que atraviesa una salida costosa" en escenarios Dado/Cuando/Entonces, de modo que los 7 casos del Apéndice B (sección Terreno y cazador) estén todos como escenarios.
+6) Cada escenario debe citar el FR que lo verifica. No agregues reglas que no estén en el enunciado.
+```
+
+**Uso de la respuesta:** regenerar la spec corrigiendo reglas inventadas (movimiento "en tránsito", costos de acciones, términos de estructuras) tras la primera revisión.
+
+---
+
+## Prompt 28 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+/speckit.clarify Prioriza las ambigüedades que cambiarían el resultado de una prueba de aceptación: qué pasa cuando varios cazadores comparten sala con el jugador o entre sí, cómo se reprograma la próxima acción de un actor cuando cambia su velocidad justo después de moverse por una salida costosa, y qué ocurre con la ruta del cazador si la sala del jugador cambia entre dos turnos del cazador. No inventes reglas: si el enunciado (@docs/enunciado_parte2.md) responde la duda, cita la sección; si no, formula la pregunta.
+```
+
+**Respuesta del grupo** a la pregunta de Gemini (varios cazadores en la misma sala): `A` (sin límite de ocupación; cada cazador ataca en su turno).
+
+**Uso de la respuesta:** aclarar ambigüedades de la especificación antes del plan; la respuesta quedó en la sección Clarifications de spec.md.
+
+---
+
+## Prompt 29 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+/speckit.plan Plan de la capacidad "terreno y cazador" (spec: specs/001-terrain-hunter/spec.md). Contexto: @docs/enunciado_parte2.md §5.1, §5.2, §5.6 y §6. Antes de proponer módulos nuevos, revisa el código existente en estructuras/, modelo/, dtos/, adaptadores/ y bench/ y reutiliza lo que sea adecuado.
+
+Problemas a resolver. Para cada uno: explicación con tus palabras, al menos dos alternativas con la razón concreta de descartar una, decisión, complejidad de las operaciones más frecuentes, módulos afectados y mediciones de --bench planificadas (incluida la alternativa descartada):
+1. Búsqueda de la ruta de costo mínimo del cazador: estructura para escoger la siguiente sala a examinar y para registrar distancias. El costo de una decisión debe depender de la región dentro del rango del cazador, no del tamaño de la cripta, y el desempate de §3.2 debe cumplirse siempre, incluso con muchas rutas de igual costo.
+2. Un cálculo por cazador frente a un cálculo compartido cuando decenas de cazadores persiguen al mismo objetivo: bajo qué condiciones cambia la respuesta.
+3. Eventos que invalidan información entre turnos (puertas que se abren o cierran, movimiento del jugador, otros actores, cambios de velocidad). Toda reutilización de un cálculo anterior debe demostrar que no cambia la respuesta; incluye la alternativa de recalcular siempre.
+4. Costo de las salidas en el modelo y en la vista: costo nulo vale 100, intervalo del movimiento y reprogramación por cambio de velocidad (FR-013).
+5. Repetir las mediciones de la primera parte que esta capacidad pueda cambiar (agenda con decenas de cazadores, ciclo de eventos de 20 ms) y decidir si alguna decisión anterior deja de ser adecuada.
+
+Reglas: toda estructura auxiliar nueva es propia (nada de dict, set, heapq, bisect, collections ni bibliotecas de grafos); el plan no agrega reglas que no estén en spec.md; cada prueba cita el FR que verifica. Incluye los escenarios de --bench: puertas que cambian con frecuencia y puertas que casi nunca cambian. Redáctalo como borrador de la sección de DECISIONES.md para esta capacidad.
+```
+
+**Uso de la respuesta:** generar el plan de la capacidad de terreno y cazador con alternativas y mediciones planificadas.
+
+---
+
+## Prompt 30 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview; cambió automáticamente a gemini-3.1-pro-preview-customtools y volvió)
+
+```text
+Corrige el plan de specs/001-terrain-hunter/ (plan.md, research.md y data-model.md) en estos puntos, sin agregar reglas que no estén en spec.md:
+1) FR-013: el reescalado del tiempo restante usa solo la fórmula de P1 §2.3, max(1, (tiempo_siguiente - t) * velocidad_anterior // velocidad_nueva). No depende del costo de la salida ni de ningún costo_base. Revisa si AgendaEventos.cambiar_velocidad ya la cumple y, si es así, el plan solo agrega una prueba y no modifica ese método. Elimina toda mención de pasar el costo de la salida como costo_base.
+2) Mapa de distancias: indica cómo se resuelve de id de sala a posición sin dict ni set (los ids no son contiguos ni empiezan en 1), y cómo se reinicia entre cálculos sin costo proporcional al tamaño de la cripta.
+3) Indica cómo se manejan las salidas dirigidas en la búsqueda que parte del jugador, y que el mapa se invalida también cuando cambia el rango máximo entre los cazadores activos.
+4) Incluye como alternativas medidas (no solo afirmadas) recalcular siempre y un cálculo por cazador, junto con los dos escenarios de --bench: puertas que cambian con frecuencia y puertas que casi nunca cambian. Quita afirmaciones como "costoso en CPU" que no estén respaldadas por una medición planificada.
+5) Justifica con un argumento explícito, no con una afirmación, por qué reutilizar el mapa de distancias no cambia la decisión del cazador.
+```
+
+**Uso de la respuesta:** corregir el plan (movimiento sin `costo_base`, índices densos con épocas, invalidación por rango máximo, alternativas medidas y argumento de equivalencia).
+
+---
+
+## Prompt 31 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+Corrige el plan de specs/001-terrain-hunter/ (plan.md, research.md y data-model.md), sin agregar reglas que no estén en spec.md:
+1) Salidas dirigidas: el cazador necesita el costo de ir desde su sala hacia el jugador usando salidas que parten de su sala. Un recorrido que parte del jugador debe usar las salidas que LLEGAN a cada sala. Indica cómo se obtienen: construir al cargar la cripta, para cada sala, la lista de salidas entrantes (con su costo y su estado de puerta), o demostrar y verificar la simetría. No asumas simetría sin decirlo.
+2) Cada salida guarda, ya resuelto al cargar la cripta, el índice denso de su sala destino y origen, de modo que el recorrido no consulte el VectorOrdenado por cada arista. Corrige las afirmaciones de complejidad.
+3) En la justificación de equivalencia, enumera los eventos entre dos turnos del cazador (apertura y cierre de puertas, movimiento del jugador, cambios de sala de otros actores, cambios de velocidad) y di, para cada uno, si invalida el mapa o por qué no.
+4) En research.md, reemplaza "30+ cazadores" por "decenas de cazadores".
+```
+
+**Uso de la respuesta:** cerrar el manejo de salidas dirigidas, resolver los índices en la carga y detallar los eventos que invalidan el mapa de distancias.
+
+---
+
+## Prompt 32 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+Corrige el plan de specs/001-terrain-hunter/ (plan.md, research.md y data-model.md), sin agregar reglas que no estén en spec.md:
+1) No asumas simetría. §3.1 solo dice que el costo es el mismo en ambos sentidos; no garantiza que exista la salida inversa ni que su puerta tenga el mismo estado, y el API describe cada salida como dirigida con su propio estado. Al cargar la cripta, construye para cada sala la lista de salidas entrantes (índice denso de origen, costo y referencia al estado de esa puerta) y haz que el recorrido desde el jugador use esas salidas entrantes. Quita toda frase que diga que se aprovecha la simetría.
+2) Expresa la complejidad del recorrido en función de R (salas dentro del rango máximo) y E_R (salidas entrantes de esas salas), no del total de la cripta; la época evita inicializar las V posiciones. La construcción de las salidas entrantes cuesta O(V + E) una sola vez al cargar la cripta.
+3) Agrega a los casos de prueba planificados una cripta con una salida de un solo sentido y otra con una puerta cerrada solo en un sentido.
+```
+
+**Uso de la respuesta:** eliminar la suposición de simetría del esqueleto (el enunciado solo iguala el costo) y expresar la complejidad en función de la región acotada.
+
+---
+
+## Prompt 33 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+/speckit.tasks Genera tasks.md para specs/001-terrain-hunter. Cada tarea referencia los FR y PR que atiende (FR-001 a FR-015 y PR-001). Incluye una tarea de prueba con unittest por cada escenario de aceptación de la spec (los 7 casos del Apéndice B y el de múltiples cazadores), cuyo nombre o docstring cite el FR que verifica, y ordena las pruebas antes de la implementación que verifican. Incluye tareas de bench: cálculo individual frente a compartido, recalcular siempre frente a caché, puertas estables e inestables, y criptas con salidas de un solo sentido. Incluye la tarea de repetir las mediciones de la primera parte que esta capacidad afecte (agenda y ciclo de 20 ms) y la de actualizar README y DECISIONES.md con la sección de esta capacidad. No crees tareas sin requisito asociado, ni que introduzcan dependencias o estructuras prohibidas por la constitución.
+```
+
+**Uso de la respuesta:** generar la lista de tareas (33 tareas en 7 fases) con trazabilidad a los FR y pruebas antes de la implementación.
+
+---
+
+## Prompt 34 · 16/11/2026
+**Herramienta:** Gemini CLI (gemini-3-flash-preview)
+
+```text
+/speckit.analyze Revisa la consistencia entre spec.md, plan.md, research.md, data-model.md y tasks.md de specs/001-terrain-hunter. Verifica: cobertura de cada FR y PR por al menos una tarea y una prueba; escenarios de aceptación sin prueba; tareas sin requisito; contradicciones entre spec y plan; cualquier violación de la constitución, en especial el Principio I (estructuras prohibidas) y el Principio VII (spec sin estructuras ni algoritmos, plan sin reglas nuevas). Revisa en particular que FR-014 (límite inclusivo d <= rango) tenga una tarea de prueba propia. Solo informe: no modifiques ningún archivo.
+```
+
+**Uso de la respuesta:** auditar la consistencia entre spec, plan y tareas; encontró huecos de prueba en FR-014, FR-001 y FR-004.
+
+---
