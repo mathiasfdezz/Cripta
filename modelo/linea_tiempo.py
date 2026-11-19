@@ -1,7 +1,7 @@
 from modelo.movimiento import MovimientoInvalido
 from modelo.punto_de_control import PuntoDeControl
 
-CADA_POR_DEFECTO = 25       # K: el mayor que cumple 50 ms en la cripta de referencia (DECISIONES.md)
+CADA_POR_DEFECTO = 10
 FUERA_DE_RANGO = "fuera_de_rango"
 
 # operaciones que se anotan (la primera posición de cada tupla)

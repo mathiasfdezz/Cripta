@@ -936,7 +936,7 @@ Consultar el estado en cualquier instante desde el inicio sin tocar la partida: 
 - **Copia**: `EstadoPartida.copiar()` usa `deepcopy` con copias propias donde importa. El grafo, las salas y la caché del catálogo se comparten (`__deepcopy__` devuelve el mismo objeto); `Puerta` y `Evento` usan `__slots__` y copia directa; la agenda copia solo los eventos vigentes; el rastro copia solo los tiempos (la vecindad enlazada es un atajo que se rearma, y copiarla recursaba hasta el límite de Python en mapas grandes); la copia no lleva historial de retroceso ni cachés de búsqueda.
 - **Guardado**: formato 5, con K y las operaciones. Al cargar, la partida se re-simula desde el inicio para rearmar los puntos y el resultado se compara con el estado guardado. Si no coincide (por ejemplo, porque una prueba tocó la vida a mano), se carga el estado y la línea empieza de nuevo desde ese punto, con un aviso. Los formatos 3 (primera parte) y 4 se rechazan con un mensaje.
 
-**¿Coincide con el plan?** Sí en el método. Lo que cambió fue por medir: la primera copia de la cripta de referencia tardaba 17,1 ms y ocupaba unos 340 KB. Con las copias propias bajó a 4,6 ms y unos 220 KB. Al medir en una cuadrícula grande apareció el problema de recursión del rastro. El K por defecto (25) salió de la tabla de abajo.
+**¿Coincide con el plan?** Sí en el método. Lo que cambió fue por medir: la primera copia de la cripta de referencia tardaba 17,1 ms y ocupaba unos 340 KB. Con las copias propias bajó a 4,6 ms y unos 220 KB. Al medir en una cuadrícula grande apareció el problema de recursión del rastro. El K por defecto (10) salió de la tabla de abajo.
 
 ### Análisis de complejidad
 
@@ -955,17 +955,17 @@ Cripta de referencia con **todo** su contenido cargado y sus 75 enemigos activos
 
 | K | Puntos | Operaciones | Memoria | Consulta promedio | p95 | Máximo | ¿Cumple 50 ms (p95)? |
 |---|---|---|---|---|---|---|---|
-| 10 | 500 | 10000 | 97 MB | 10,2 ms | 16,7 ms | 23,7 ms | sí |
+| **10** | 500 | 10000 | **97 MB** | **10,2 ms** | **16,7 ms** | **23,7 ms** | **sí** |
 | 15 | 334 | 10000 | 65 MB | 14,4 ms | 23,4 ms | 103,4 ms | sí |
 | 20 | 250 | 10000 | 49 MB | 17,9 ms | 27,0 ms | 92,4 ms | sí |
-| **25** | 200 | 10000 | **40 MB** | **18,3 ms** | **33,8 ms** | 56,1 ms | **sí** |
+| 25 | 200 | 10000 | 40 MB | 18,3 ms | 33,8 ms | 56,1 ms | sí |
 | 50 | 100 | 10000 | 21 MB | 33,9 ms | 56,9 ms | 62,2 ms | no |
 | 200 | 25 | 10000 | 6,4 MB | 120,5 ms | 216,6 ms | 299,0 ms | no |
 | sin puntos | 1 | 10000 | 1,8 MB | 2723 ms | — | 4022 ms | no |
 
 Las filas 15 y 20 son de una corrida aparte con 80 consultas. Un punto de control en esa misma cripta cuesta 4,2 ms de promedio (5,5 ms de máximo), una vez cada K acciones.
 
-**Por qué K = 25.** La memoria baja como 1/K y el tiempo de consulta sube con K (se re-simulan en promedio K/2 acciones). K = 25 es el mayor valor cuyo p95 queda bajo 50 ms en el peor caso de la cripta de referencia (33,8 ms; en otra corrida, 29,9 ms). Con K = 50 el p95 ya pasa de 50 ms, y K = 10 duplica la memoria para ganar unos milisegundos. El máximo no sirve para elegir K: aparecen consultas sueltas de 60 a 100 ms con cualquier K (K = 15 tuvo una de 103 ms), así que no dependen de cuántas acciones se re-simulan. Son pausas del recolector de basura de Python con decenas de MB de copias vivas, el mismo fenómeno que vimos en la sección 5.2 de la primera parte. Respuesta a la pregunta de §8: el punto razonable está donde la consulta más lenta toca el límite, y lo encontramos midiendo esa consulta más lenta para cada K.
+**Por qué K = 10.** La memoria baja como 1/K y el tiempo de consulta sube con K (se re-simulan en promedio K/2 acciones). Con K = 25 el p95 quedó bajo 50 ms en la primera medición (33,8 ms), pero en una repetición del bench en otro equipo subió a 107 ms, con máximo de 141 ms. Con K = 10 el máximo quedó bajo 50 ms en todas las corridas (23,7 ms y 19,7 ms), a cambio de duplicar la memoria (unos 100 MB en el peor caso frente a 40 MB). Elegimos K = 10 porque es el único valor que cumple el límite de 50 ms con margen aunque el equipo sea más lento. El máximo no sirve para elegir K: aparecen consultas sueltas de 60 a 100 ms con cualquier K (K = 15 tuvo una de 103 ms), así que no dependen de cuántas acciones se re-simulan. Son pausas del recolector de basura de Python con decenas de MB de copias vivas, el mismo fenómeno que vimos en la sección 5.2 de la primera parte. Respuesta a la pregunta de §8: el punto razonable está donde la consulta más lenta toca el límite, y lo encontramos midiendo esa consulta más lenta para cada K.
 
 ### Límites conocidos
 

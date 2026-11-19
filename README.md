@@ -46,7 +46,7 @@ Banderas:
   Código de salida 0 si es resoluble y 1 si no. Ejemplo: `python main.py --verificar cripta-05 --offline`.
 - `--forzar`: juega aunque la cripta no sea resoluble.
 - `--checkpoint-cada K`: acciones del jugador entre puntos de control de la línea de tiempo
-  (por defecto 25; la elección está medida en `DECISIONES.md`).
+  (por defecto 10; la elección está medida en `DECISIONES.md`).
 - `--replay partidas/ARCHIVO.log --hasta T`: reproduce la partida hasta el instante T e imprime el
   mismo resumen que `historia T`, sin la interfaz. Si T es posterior al final, muestra el estado
   final y lo indica.

@@ -260,3 +260,14 @@ Desde el 17/11/2026 el grupo usa Claude Code como agente (integración `claude` 
 ```
 
 **Uso de la respuesta:** el código, las pruebas y el bench de la capacidad.
+
+---
+
+## Prompt 24 · 18/11/2026
+**Herramienta:** Claude (chat)
+
+```text
+Revisa el proyecto Cripta (ZIP, enunciado de la segunda parte y repositorio de GitHub), identifica qué requisitos faltan sin reescribir el código del equipo, y corrige lo que haga falta con un estilo sencillo y sin comentarios.
+```
+
+**Uso de la respuesta:** diagnóstico del estado del proyecto contra el enunciado y cambio del K por defecto de la línea de tiempo de 25 a 10 (`modelo/linea_tiempo.py`, `README.md`, `DECISIONES.md`), según las mediciones del bench.
